@@ -465,7 +465,7 @@ export class DatabaseService {
       return { success: false, error: 'Email address is already registered.' };
     }
 
-    const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+    const newId = users.length > 0 ? Math.max(...users.map(u => Number(u.id) || 0)) + 1 : 1;
     const newUser: UserAccount = {
       ...user,
       id: newId,

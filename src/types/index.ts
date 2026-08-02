@@ -25,7 +25,7 @@ export type LanguageCode = 'en' | 'fr';
 export type CurrencyCode = 'USD' | 'FCFA' | 'EUR' | 'TRY';
 
 export interface UserAccount {
-  id: string;
+  id: number | string;
   username: string;
   passwordHash: string;
   role: UserRole;
@@ -107,6 +107,7 @@ export interface SeasonalEvent {
   start_date: string;
   end_date: string;
   demand_multiplier: number;
+  description?: string;
 }
 
 export interface AIProductAnalysis {
@@ -168,21 +169,28 @@ export interface SystemSettingsConfig {
   email: {
     senderEmail: string;
     receiverEmail: string;
-    smtpServer: string;
-    smtpPort: number;
+    smtpServer?: string;
+    smtpPort?: number;
     smtpPassword?: string;
+    alertRulesEnabled?: boolean;
+    checkIntervalMinutes?: number;
   };
   ai: {
-    provider: 'Google Gemini AI' | 'Offline AI Simulation';
-    model: string;
+    provider?: 'Google Gemini AI' | 'Offline AI Simulation';
+    model?: string;
     googleApiKey?: string;
-    creativity: number;
-    maxTokens: number;
+    creativity?: number;
+    maxTokens?: number;
   };
-  alerts: {
+  alerts?: {
     lowStockThreshold: number;
     autoCheckIntervalMinutes: number;
     enableEmailNotifications: boolean;
+  };
+  thresholds?: {
+    lowStockThreshold: number;
+    criticalExpiryDays: number;
+    defaultMarginTargetPercent: number;
   };
   general: {
     companyName: string;
