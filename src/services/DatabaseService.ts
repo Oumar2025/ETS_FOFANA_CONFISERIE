@@ -7,8 +7,8 @@ const ALERTS_KEY = 'fof_ai_alerts';
 const SETTINGS_KEY = 'fof_ai_settings';
 const USERS_KEY = 'fof_ai_users';
 
-// Free Centralized Real-time Cloud Storage API Endpoint for multi-device live sync
-const CLOUD_SYNC_ENDPOINT = 'https://fofana-confiserie-default-rtdb.firebaseio.com/db_state.json';
+// Global Permanent Centralized Multi-Device Cloud Database (CORS-enabled for Netlify & Mobile Phones)
+const CLOUD_SYNC_ENDPOINT = 'https://jsonblob.com/api/jsonBlob/019fc2e8-db7e-7666-bc54-b6a61a0c25d8';
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
@@ -256,6 +256,8 @@ export const INITIAL_USERS: UserAccount[] = [
 ];
 
 export class DatabaseService {
+  private isSyncing = false;
+
   constructor() {
     this.initDatabase();
     this.startCloudDatabaseSync();
@@ -281,10 +283,10 @@ export class DatabaseService {
     // Initial fetch from Cloud DB
     await this.fetchFromCloudDatabase();
 
-    // Periodically sync live every 10 seconds
+    // Periodically sync live every 5 seconds
     setInterval(() => {
       this.fetchFromCloudDatabase();
-    }, 10000);
+    }, 5000);
 
     // Sync immediately when user switches tabs or focuses device screen
     if (typeof window !== 'undefined') {
@@ -295,22 +297,34 @@ export class DatabaseService {
   }
 
   public async fetchFromCloudDatabase(): Promise<boolean> {
+    if (this.isSyncing) return false;
+    this.isSyncing = true;
     try {
-      const res = await fetch(CLOUD_SYNC_ENDPOINT, { method: 'GET' });
+      const res = await fetch(CLOUD_SYNC_ENDPOINT, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
       if (res.ok) {
         const cloudState = await res.json();
         if (cloudState && typeof cloudState === 'object') {
-          if (cloudState.products && Array.isArray(cloudState.products)) {
+          let hasUpdated = false;
+
+          if (cloudState.products && Array.isArray(cloudState.products) && cloudState.products.length > 0) {
             localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cloudState.products));
+            hasUpdated = true;
           }
-          if (cloudState.users && Array.isArray(cloudState.users)) {
+          if (cloudState.users && Array.isArray(cloudState.users) && cloudState.users.length > 0) {
             localStorage.setItem(USERS_KEY, JSON.stringify(cloudState.users));
+            hasUpdated = true;
           }
-          if (cloudState.events && Array.isArray(cloudState.events)) {
+          if (cloudState.events && Array.isArray(cloudState.events) && cloudState.events.length > 0) {
             localStorage.setItem(EVENTS_KEY, JSON.stringify(cloudState.events));
+            hasUpdated = true;
           }
           if (cloudState.alerts && Array.isArray(cloudState.alerts)) {
             localStorage.setItem(ALERTS_KEY, JSON.stringify(cloudState.alerts));
+            hasUpdated = true;
           }
           if (cloudState.settings && typeof cloudState.settings === 'object') {
             const merged = {
@@ -321,13 +335,20 @@ export class DatabaseService {
               email: { ...DEFAULT_SETTINGS.email, ...(cloudState.settings.email || {}) }
             };
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+            hasUpdated = true;
           }
-          return true;
+
+          this.isSyncing = false;
+          return hasUpdated;
+        } else {
+          // Cloud endpoint empty, seed initial data to cloud
+          await this.pushToCloudDatabase();
         }
       }
     } catch (err) {
-      console.warn('[DatabaseService] Cloud fetch offline fallback:', err);
+      console.warn('[DatabaseService] Cloud fetch fallback:', err);
     }
+    this.isSyncing = false;
     return false;
   }
 
@@ -344,7 +365,10 @@ export class DatabaseService {
 
       await fetch(CLOUD_SYNC_ENDPOINT, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(cloudState)
       });
       return true;
