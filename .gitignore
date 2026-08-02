@@ -1,0 +1,33 @@
+# Logs & Dependencies
+node_modules
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build Output
+dist
+dist-ssr
+*.local
+
+# Environment Variables & Secrets (CRITICAL FOR GITHUB SECURITY)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE & OS Files
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/
+.idea/
+
+# Scratch & Temporary Test Files
+scratch_test*
+scratch_*
