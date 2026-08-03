@@ -850,6 +850,42 @@ export class DatabaseService {
     return newCust;
   }
 
+  public updateCustomer(id: number, updated: Partial<Customer>): Customer | null {
+    const customers = this.getCustomers();
+    const index = customers.findIndex(c => c.customer_id === id);
+    if (index === -1) return null;
+    customers[index] = { ...customers[index], ...updated };
+    this.saveCustomers(customers);
+    return customers[index];
+  }
+
+  public deleteCustomer(id: number): boolean {
+    let customers = this.getCustomers();
+    const initialLen = customers.length;
+    customers = customers.filter(c => c.customer_id !== id);
+    if (customers.length !== initialLen) {
+      this.saveCustomers(customers);
+      return true;
+    }
+    return false;
+  }
+
+  public deleteInvoice(id: number): boolean {
+    let invoices = this.getInvoices();
+    const target = invoices.find(i => i.invoice_id === id);
+    if (target) {
+      invoices = invoices.filter(i => i.invoice_id !== id);
+      this.saveInvoices(invoices);
+
+      // Clean corresponding sales history records
+      let sales = this.getSalesHistory();
+      sales = sales.filter(s => s.invoice_number !== target.invoice_number);
+      this.saveSalesHistory(sales);
+      return true;
+    }
+    return false;
+  }
+
   // --- Suppliers ---
   public getSuppliers(): Supplier[] {
     try {

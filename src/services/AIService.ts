@@ -217,45 +217,51 @@ export class AIService {
 
   public generateWeeklyActionPlan(): WeeklyActionPlanDay[] {
     const products = dbService.getProducts();
-    const expiring = products.filter(p => p.status === 'Approaching Expiry' || p.status === 'Critical Stock');
-    const lowStock = products.filter(p => p.quantity < 200);
+    const expiring = products.filter(p => p.status === 'Approaching Expiry' || p.status === 'Critical Stock' || p.status === 'Expired');
+    const lowStock = products.filter(p => p.quantity < 300);
+    const firstItem = products[0] || { product_id: 1, product_name: 'Confectionery Line', unit: 'Cartons', supplier_country: 'Turkey', quantity: 500, warehouse: 'Warehouse A (Bamako Central)', destination_country: 'Mali' };
+    const secondItem = products[1] || firstItem;
+    const thirdItem = products[2] || firstItem;
+
+    const targetLow = lowStock[0] || firstItem;
+    const targetExpiring = expiring[0] || secondItem;
 
     return [
       {
         day: 'Monday',
-        action: `Import 500 Cartons of ${lowStock[0]?.product_name || 'Oreo Biscuits'} from ${lowStock[0]?.supplier_country || 'Turkey'}.`,
-        actionFr: `Importer 500 Cartons de ${lowStock[0]?.product_name || 'Biscuits Oreo'} depuis la ${lowStock[0]?.supplier_country || 'Turquie'}.`,
-        productId: lowStock[0]?.product_id,
-        productName: lowStock[0]?.product_name,
+        action: `Import 500 ${targetLow.unit} of ${targetLow.product_name} from ${targetLow.supplier_country}.`,
+        actionFr: `Importer 500 ${targetLow.unit} de ${targetLow.product_name} depuis la ${targetLow.supplier_country}.`,
+        productId: targetLow.product_id,
+        productName: targetLow.product_name,
         priority: 'High',
-        rationale: `Current stock of ${lowStock[0]?.product_name || 'Oreo Biscuits'} (${lowStock[0]?.quantity || 450} units) is below projected 30-day demand threshold. Early reorder prevents stockout during peak weekend distribution in Mali.`,
-        rationaleFr: `Le stock actuel de ${lowStock[0]?.product_name || 'Biscuits Oreo'} (${lowStock[0]?.quantity || 450} unités) est inférieur au seuil de sécurité. Un réapprovisionnement précoce évite la rupture de stock.`
+        rationale: `Current stock of ${targetLow.product_name} (${targetLow.quantity} ${targetLow.unit} in ${targetLow.warehouse}) requires stock replenishment. Early reorder prevents stockout during peak distribution in ${targetLow.destination_country}.`,
+        rationaleFr: `Le stock actuel de ${targetLow.product_name} (${targetLow.quantity} ${targetLow.unit} à ${targetLow.warehouse}) nécessite un réapprovisionnement.`
       },
       {
         day: 'Tuesday',
-        action: `Launch 15% discount promotion for ${expiring[0]?.product_name || 'Atlas Wafers'} in Mali & Burkina Faso retail channels.`,
-        actionFr: `Lancer une promotion de 15% pour ${expiring[0]?.product_name || 'Gaufrettes Atlas'} sur les canaux de vente au Mali et au Burkina Faso.`,
-        productId: expiring[0]?.product_id,
-        productName: expiring[0]?.product_name,
+        action: `Launch 15% discount promotion for ${targetExpiring.product_name} in ${targetExpiring.destination_country} retail channels.`,
+        actionFr: `Lancer une promotion de 15% pour ${targetExpiring.product_name} sur les canaux de vente au ${targetExpiring.destination_country}.`,
+        productId: targetExpiring.product_id,
+        productName: targetExpiring.product_name,
         priority: 'High',
-        rationale: `${expiring[0]?.product_name || 'Atlas Wafers'} has expiring stock within 30 days. Promotional markdown increases turnover velocity and prevents $1,400 financial inventory write-off.`,
-        rationaleFr: `${expiring[0]?.product_name || 'Gaufrettes Atlas'} a du stock expirant dans 30 jours. La réduction accélère la rotation et évite une perte financière.`
+        rationale: `${targetExpiring.product_name} in ${targetExpiring.warehouse} has ${targetExpiring.quantity} ${targetExpiring.unit}. Promotional markdown increases turnover velocity and prevents financial inventory write-off.`,
+        rationaleFr: `${targetExpiring.product_name} à ${targetExpiring.warehouse} contient ${targetExpiring.quantity} ${targetExpiring.unit}. La réduction accélère la rotation et évite une perte financière.`
       },
       {
         day: 'Wednesday',
-        action: `Contact supplier in Turkey / Morocco for logistics update to Kayes Depot & Sikasso Hub.`,
-        actionFr: `Contacter les fournisseurs en Turquie / Maroc pour la mise à jour logistique vers les dépôts de Kayes & Sikasso.`,
+        action: `Contact supplier in ${targetLow.supplier_country} for logistics update to ${targetLow.warehouse}.`,
+        actionFr: `Contacter le fournisseur en ${targetLow.supplier_country} pour la mise à jour logistique vers ${targetLow.warehouse}.`,
         priority: 'Medium',
-        rationale: `Customs clearance lead time from Casablanca and Istanbul to regional depots takes 12-14 transit days. Tracking prevents shipment delays.`,
-        rationaleFr: `Le délai de dédouanement depuis Casablanca et Istanbul vers les dépôts régionaux prend 12-14 jours. Le suivi évite les retards.`
+        rationale: `Customs clearance and sea/land transport from ${targetLow.supplier_country} to regional depots requires active tracking to prevent shipping delays.`,
+        rationaleFr: `Le dédouanement et le transport depuis la ${targetLow.supplier_country} nécessitent un suivi actif.`
       },
       {
         day: 'Thursday',
-        action: `Review warehouse inventory at Bamako Central & check Sultan Dates stock levels for Ramadan.`,
-        actionFr: `Examiner l'inventaire à Bamako Central et vérifier les stocks de Dattes Sultan pour le Ramadan.`,
+        action: `Review warehouse inventory at ${thirdItem.warehouse} & check ${thirdItem.product_name} stock levels.`,
+        actionFr: `Examiner l'inventaire à ${thirdItem.warehouse} et vérifier les stocks de ${thirdItem.product_name}.`,
         priority: 'Medium',
-        rationale: `Historical sales indicate a 2.8x seasonal demand surge for Sultan Dates during Ramadan. Verifying warehouse depth guarantees full market fulfillment.`,
-        rationaleFr: `Les ventes historiques indiquent une hausse de 2,8x de la demande de dattes pendant le Ramadan. La vérification garantit l'approvisionnement.`
+        rationale: `Evaluating stock levels for ${thirdItem.product_name} (${thirdItem.quantity} ${thirdItem.unit}) guarantees continuous regional fulfillment.`,
+        rationaleFr: `L'évaluation des stocks de ${thirdItem.product_name} garantit un approvisionnement régional continu.`
       },
       {
         day: 'Friday',

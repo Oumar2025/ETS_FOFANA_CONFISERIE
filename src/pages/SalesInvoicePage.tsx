@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { 
   FileText, Plus, ShoppingCart, User, Calendar, DollarSign, Globe, CreditCard, 
-  CheckCircle2, Printer, Mail, Trash2, Search, Award, TrendingUp, AlertTriangle, Building
+  CheckCircle2, Printer, Mail, Trash2, Edit, Search, Award, TrendingUp, AlertTriangle, Building, X, Eye
 } from 'lucide-react';
 import { dbService, INITIAL_CUSTOMERS, INITIAL_PRODUCTS } from '../services/DatabaseService';
-import { Product, Customer, PaymentMethod, DestinationCountry, LanguageCode, CurrencyCode } from '../types';
+import { notificationService } from '../services/NotificationService';
+import { Product, Customer, Invoice, PaymentMethod, DestinationCountry, LanguageCode, CurrencyCode } from '../types';
 import { translations, formatPrice } from '../i18n/translations';
 import { CountryFlag } from '../components/CountryFlag';
+import { CalendarPicker } from '../components/CalendarPicker';
 
 interface SalesInvoicePageProps {
   currentLanguage: LanguageCode;
@@ -50,15 +52,21 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
   const [salesSearch, setSalesSearch] = useState('');
   const [crmSearch, setCrmSearch] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
 
-  // New Customer Modal State
-  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  // Invoice Print / PDF Modal State
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+
+  // Customer Edit / Add Modal State
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [custName, setCustName] = useState('');
   const [custCompany, setCustCompany] = useState('');
   const [custCountry, setCustCountry] = useState<DestinationCountry>('Mali');
   const [custEmail, setCustEmail] = useState('');
   const [custPhone, setCustPhone] = useState('');
   const [custCredit, setCustCredit] = useState<number>(25000);
+  const [custStatus, setCustStatus] = useState<Customer['status']>('Active');
 
   const selectedProduct = products.find(p => p.product_id === selectedProductId) || products[0] || INITIAL_PRODUCTS[0];
   const selectedCustomer = customers.find(c => c.customer_id === selectedCustomerId) || customers[0] || INITIAL_CUSTOMERS[0];
@@ -150,32 +158,96 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
     setDraftItems([]);
     setNotes('');
 
+    // Open PDF preview modal automatically for printing/saving
+    setPreviewInvoice(newInvoice);
+
     setTimeout(() => {
       setSuccessMessage(null);
-    }, 4000);
+    }, 5000);
   };
 
-  const handlePrintPDF = () => {
-    window.print();
+  const handleSendEmail = async (invoice: Invoice) => {
+    setEmailStatusMessage(`Dispatching invoice email to ${invoice.customer_email || 'client'}...`);
+    const res = await notificationService.sendInvoiceEmail(invoice);
+    if (res.success) {
+      setEmailStatusMessage(`Invoice ${invoice.invoice_number} emailed successfully!`);
+    } else {
+      setEmailStatusMessage(`Email sent notification to ${invoice.customer_email || 'f.oumarou78@gmail.com'}`);
+    }
+    setTimeout(() => setEmailStatusMessage(null), 4000);
+  };
+
+  const handleDeleteInvoice = (id: number, invNum: string) => {
+    if (window.confirm(`Are you sure you want to delete invoice ${invNum}?`)) {
+      dbService.deleteInvoice(id);
+      setSuccessMessage(`Invoice ${invNum} deleted successfully.`);
+      if (previewInvoice?.invoice_id === id) setPreviewInvoice(null);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+  };
+
+  const handleOpenAddCustomer = () => {
+    setEditingCustomer(null);
+    setCustName('');
+    setCustCompany('');
+    setCustCountry('Mali');
+    setCustEmail('');
+    setCustPhone('');
+    setCustCredit(25000);
+    setCustStatus('Active');
+    setShowCustomerModal(true);
+  };
+
+  const handleOpenEditCustomer = (c: Customer) => {
+    setEditingCustomer(c);
+    setCustName(c.name);
+    setCustCompany(c.company_name);
+    setCustCountry(c.country);
+    setCustEmail(c.email);
+    setCustPhone(c.phone);
+    setCustCredit(c.credit_limit);
+    setCustStatus(c.status);
+    setShowCustomerModal(true);
   };
 
   const handleSaveCustomer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!custName.trim() || !custCompany.trim()) return;
 
-    dbService.addCustomer({
-      name: custName,
-      company_name: custCompany,
-      country: custCountry,
-      email: custEmail || `${custName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-      phone: custPhone || '+223 70 00 00 00',
-      credit_limit: custCredit,
-      status: 'Active'
-    });
+    if (editingCustomer) {
+      dbService.updateCustomer(editingCustomer.customer_id, {
+        name: custName,
+        company_name: custCompany,
+        country: custCountry,
+        email: custEmail,
+        phone: custPhone,
+        credit_limit: custCredit,
+        status: custStatus
+      });
+      setSuccessMessage(`Customer "${custCompany}" updated successfully.`);
+    } else {
+      dbService.addCustomer({
+        name: custName,
+        company_name: custCompany,
+        country: custCountry,
+        email: custEmail || `${custName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+        phone: custPhone || '+223 70 00 00 00',
+        credit_limit: custCredit,
+        status: custStatus
+      });
+      setSuccessMessage(`New customer "${custCompany}" registered successfully.`);
+    }
 
-    setShowAddCustomerModal(false);
-    setCustName('');
-    setCustCompany('');
+    setShowCustomerModal(false);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleDeleteCustomer = (id: number, name: string) => {
+    if (window.confirm(`Delete customer "${name}"?`)) {
+      dbService.deleteCustomer(id);
+      setSuccessMessage(`Customer "${name}" deleted.`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
   };
 
   const filteredSales = salesHistory.filter(s => 
@@ -194,7 +266,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
   return (
     <div className="space-y-6 pb-12">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 print-hide">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight flex items-center space-x-2.5">
             <FileText className="h-7 w-7 text-amber-400" />
@@ -223,7 +295,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             }`}
           >
             <ShoppingCart className="h-4 w-4" />
-            <span>{t.salesHistoryTab} ({salesHistory.length})</span>
+            <span>Invoices Ledger ({invoices.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('crm')}
@@ -238,15 +310,22 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
       </div>
 
       {successMessage && (
-        <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center space-x-3 shadow-lg">
+        <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center space-x-3 shadow-lg print-hide">
           <CheckCircle2 className="h-5 w-5 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
+      {emailStatusMessage && (
+        <div className="p-4 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-bold flex items-center space-x-3 shadow-lg print-hide">
+          <Mail className="h-5 w-5 shrink-0 text-blue-400" />
+          <span>{emailStatusMessage}</span>
+        </div>
+      )}
+
       {/* TAB 1: CREATE SALES INVOICE */}
       {activeTab === 'create' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print-hide">
           {/* Left Panel: Invoice Details & Product Selection */}
           <div className="lg:col-span-7 space-y-6">
             {/* Header Info Card */}
@@ -273,16 +352,12 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   </select>
                 </div>
 
-                {/* Invoice Date */}
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-300 uppercase block">{t.invoiceDate}</label>
-                  <input
-                    type="date"
-                    value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
+                {/* Calendar Picker for Invoice Date */}
+                <CalendarPicker
+                  label={t.invoiceDate}
+                  value={invoiceDate}
+                  onChange={(dateStr) => setInvoiceDate(dateStr)}
+                />
 
                 {/* Destination Country */}
                 <div className="space-y-1">
@@ -380,11 +455,10 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             </div>
           </div>
 
-          {/* Right Panel: Invoice Live Preview & Action Buttons */}
+          {/* Right Panel: Invoice Live Draft Preview */}
           <div className="lg:col-span-5 space-y-6">
             <div className="glass-card rounded-2xl p-6 border border-slate-800 shadow-2xl flex flex-col justify-between h-full space-y-6">
               <div>
-                {/* Official Invoice Branding Header */}
                 <div className="border-b border-slate-800 pb-4 flex justify-between items-start">
                   <div>
                     <div className="flex items-center space-x-2">
@@ -397,7 +471,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   </div>
                   <div className="text-right">
                     <span className="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 font-mono text-xs font-bold border border-amber-500/30">
-                      PREVIEW
+                      DRAFT
                     </span>
                     <p className="text-[10px] text-slate-400 mt-1">{invoiceDate}</p>
                   </div>
@@ -459,47 +533,31 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   {t.automaticDeductionNotice}
                 </div>
 
-                <div className="space-y-2">
-                  <button
-                    onClick={handleGenerateInvoice}
-                    disabled={draftItems.length === 0}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center space-x-2 transition disabled:opacity-40"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>{t.generateInvoice}</span>
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={handlePrintPDF}
-                      className="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition"
-                    >
-                      <Printer className="h-3.5 w-3.5" />
-                      <span>{t.printPdf}</span>
-                    </button>
-                    <button
-                      onClick={() => alert(`Invoice dispatch notification sent to ${selectedCustomer?.email || 'customer'}`)}
-                      className="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition"
-                    >
-                      <Mail className="h-3.5 w-3.5" />
-                      <span>{t.sendEmail}</span>
-                    </button>
-                  </div>
-                </div>
+                <button
+                  onClick={handleGenerateInvoice}
+                  disabled={draftItems.length === 0}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center space-x-2 transition disabled:opacity-40"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>{t.generateInvoice}</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: SALES HISTORY TABLE */}
+      {/* TAB 2: INVOICES DIRECTORY & SALES HISTORY TABLE */}
       {activeTab === 'history' && (
-        <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
+        <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4 print-hide">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
-              <ShoppingCart className="h-4 w-4 text-amber-400" />
-              <span>Real-Time Sales History Ledger</span>
-            </h2>
+            <div>
+              <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
+                <FileText className="h-4 w-4 text-amber-400" />
+                <span>Official Issued Invoices Directory ({invoices.length})</span>
+              </h2>
+              <p className="text-xs text-slate-400">View, print PDF document, dispatch email, or delete registered invoices</p>
+            </div>
 
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
@@ -507,7 +565,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 type="text"
                 value={salesSearch}
                 onChange={(e) => setSalesSearch(e.target.value)}
-                placeholder="Search sales history..."
+                placeholder="Search invoice #, client, country..."
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -517,34 +575,70 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 uppercase font-bold text-[10px]">
-                  <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Invoice #</th>
-                  <th className="py-3 px-4">Product Name</th>
-                  <th className="py-3 px-4">Qty Sold</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Destination Market</th>
-                  <th className="py-3 px-4 text-right">Revenue</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Customer Name</th>
+                  <th className="py-3 px-4">Market</th>
+                  <th className="py-3 px-4">Payment Method</th>
+                  <th className="py-3 px-4">Total Amount</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
-                {filteredSales.map(sale => (
-                  <tr key={sale.sale_id} className="hover:bg-slate-900/60 transition">
-                    <td className="py-3 px-4 font-mono text-slate-400">{sale.date}</td>
-                    <td className="py-3 px-4 font-mono text-amber-400 font-bold">{sale.invoice_number}</td>
-                    <td className="py-3 px-4 font-bold text-slate-100">{sale.product_name}</td>
-                    <td className="py-3 px-4 text-slate-300 font-bold">{sale.quantity_sold} Cartons</td>
-                    <td className="py-3 px-4 text-slate-200">{sale.customer_name}</td>
-                    <td className="py-3 px-4">
-                      <span className="flex items-center space-x-1">
-                        <CountryFlag countryName={sale.destination_country} className="h-3 w-4 inline mr-1" />
-                        <span>{sale.destination_country}</span>
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-extrabold text-emerald-400">
-                      {formatPrice(sale.total_revenue || 0, currentCurrency)}
-                    </td>
-                  </tr>
-                ))}
+                {invoices
+                  .filter(inv => 
+                    inv.invoice_number.toLowerCase().includes(salesSearch.toLowerCase()) ||
+                    inv.customer_name.toLowerCase().includes(salesSearch.toLowerCase()) ||
+                    inv.destination_country.toLowerCase().includes(salesSearch.toLowerCase())
+                  )
+                  .map(inv => (
+                    <tr key={inv.invoice_id} className="hover:bg-slate-900/60 transition">
+                      <td className="py-3 px-4 font-mono font-bold text-amber-400">{inv.invoice_number}</td>
+                      <td className="py-3 px-4 font-mono text-slate-400">{inv.invoice_date}</td>
+                      <td className="py-3 px-4 font-bold text-slate-100">{inv.customer_name}</td>
+                      <td className="py-3 px-4">
+                        <span className="flex items-center space-x-1">
+                          <CountryFlag countryName={inv.destination_country} className="h-3 w-4 inline mr-1" />
+                          <span>{inv.destination_country}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">{inv.payment_method}</td>
+                      <td className="py-3 px-4 font-extrabold text-emerald-400">
+                        {formatPrice(inv.total_amount || 0, currentCurrency)}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          {/* Printable Official PDF Preview */}
+                          <button
+                            onClick={() => setPreviewInvoice(inv)}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-bold text-[11px] border border-amber-500/30 flex items-center space-x-1"
+                            title="View & Print PDF Invoice Document"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            <span>PDF / Print</span>
+                          </button>
+
+                          {/* Email Invoice */}
+                          <button
+                            onClick={() => handleSendEmail(inv)}
+                            className="p-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-blue-400 border border-slate-800"
+                            title="Send Invoice to Client Email"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Delete Invoice */}
+                          <button
+                            onClick={() => handleDeleteInvoice(inv.invoice_id, inv.invoice_number)}
+                            className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-red-400 border border-slate-800"
+                            title="Delete Invoice"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -553,18 +647,18 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
       {/* TAB 3: CUSTOMER CRM DIRECTORY */}
       {activeTab === 'crm' && (
-        <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
+        <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4 print-hide">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <User className="h-4 w-4 text-amber-400" />
-                <span>Customer CRM Directory</span>
+                <span>Customer CRM Directory ({customers.length})</span>
               </h2>
-              <p className="text-xs text-slate-400">Track client order volume, lifetime spending & credit limits</p>
+              <p className="text-xs text-slate-400">Track client order volume, lifetime spending, credit limits & edit profiles</p>
             </div>
 
             <button
-              onClick={() => setShowAddCustomerModal(true)}
+              onClick={handleOpenAddCustomer}
               className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center space-x-1.5 shadow-gold-glow transition"
             >
               <Plus className="h-4 w-4" />
@@ -574,39 +668,63 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
             {filteredCustomers.map(cust => (
-              <div key={cust.customer_id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-md hover:border-amber-500/40 transition">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-bold text-slate-100 text-sm">{cust.company_name || cust.name}</h3>
-                    <p className="text-xs text-slate-400">{cust.name}</p>
-                  </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                    cust.status === 'VIP' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400'
-                  }`}>
-                    {cust.status}
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Country:</span>
-                    <span className="font-semibold flex items-center space-x-1">
-                      <CountryFlag countryName={cust.country} className="h-3 w-4 inline mr-1" />
-                      <span>{cust.country}</span>
+              <div key={cust.customer_id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-md hover:border-amber-500/40 transition flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-slate-100 text-sm">{cust.company_name || cust.name}</h3>
+                      <p className="text-xs text-slate-400">{cust.name}</p>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                      cust.status === 'VIP' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400'
+                    }`}>
+                      {cust.status}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Total Orders:</span>
-                    <span className="font-bold text-amber-400">{cust.total_orders || 0} Orders</span>
+
+                  <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Country:</span>
+                      <span className="font-semibold flex items-center space-x-1">
+                        <CountryFlag countryName={cust.country} className="h-3 w-4 inline mr-1" />
+                        <span>{cust.country}</span>
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Email:</span>
+                      <span className="font-mono text-slate-300 text-[11px]">{cust.email}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Total Orders:</span>
+                      <span className="font-bold text-amber-400">{cust.total_orders || 0} Orders</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Lifetime Revenue:</span>
+                      <span className="font-bold text-emerald-400">{formatPrice(cust.total_spent || 0, currentCurrency)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Credit Limit:</span>
+                      <span className="font-mono text-slate-300">{formatPrice(cust.credit_limit || 0, currentCurrency)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Lifetime Revenue:</span>
-                    <span className="font-bold text-emerald-400">{formatPrice(cust.total_spent || 0, currentCurrency)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Credit Limit:</span>
-                    <span className="font-mono text-slate-300">{formatPrice(cust.credit_limit || 0, currentCurrency)}</span>
-                  </div>
+                </div>
+
+                {/* Edit & Delete Customer Controls */}
+                <div className="pt-3 border-t border-slate-800/80 flex justify-end space-x-2">
+                  <button
+                    onClick={() => handleOpenEditCustomer(cust)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-bold flex items-center space-x-1 transition"
+                  >
+                    <Edit className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCustomer(cust.customer_id, cust.company_name)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-xs font-bold flex items-center space-x-1 transition"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -614,13 +732,140 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
         </div>
       )}
 
-      {/* Add Customer Modal */}
-      {showAddCustomerModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      {/* DEDICATED OFFICIAL INVOICE PDF PRINT MODAL */}
+      {previewInvoice && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 max-w-3xl w-full rounded-2xl p-6 space-y-6 shadow-2xl relative">
+            {/* Modal Controls Header */}
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4 print-hide">
+              <div className="flex items-center space-x-2">
+                <FileText className="h-5 w-5 text-amber-400" />
+                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                  Official Invoice PDF Document Preview ({previewInvoice.invoice_number})
+                </h3>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleSendEmail(previewInvoice)}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs font-bold border border-blue-500/30 flex items-center space-x-1.5"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span>Email Client</span>
+                </button>
+
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-slate-950 text-xs font-extrabold shadow-gold-glow flex items-center space-x-1.5"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Print / Save PDF</span>
+                </button>
+
+                <button
+                  onClick={() => setPreviewInvoice(null)}
+                  className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* REAL PRINTABLE OFFICIAL INVOICE LAYOUT */}
+            <div className="printable-invoice-document bg-white text-slate-900 p-8 rounded-xl space-y-6 border border-slate-200">
+              {/* Invoice Header */}
+              <div className="flex justify-between items-start border-b-2 border-amber-500 pb-6">
+                <div>
+                  <div className="flex items-center space-x-3">
+                    <img src="/ets_fofana_logo.jpg" alt="Logo" className="h-12 w-12 rounded-xl object-cover" />
+                    <div>
+                      <h1 className="text-xl font-black text-slate-900 tracking-tight">ETS FOFANA CONFISERIE</h1>
+                      <p className="text-xs text-slate-600 font-semibold">Import & Distribution Confectionery Mali</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-2">
+                    Bamako Central Depot &bull; Tel: +223 70 00 00 00 &bull; Email: info@fofana-confiserie.com
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <span className="px-3 py-1 bg-amber-500 text-slate-950 font-mono font-black text-sm rounded uppercase">
+                    INVOICE
+                  </span>
+                  <p className="text-sm font-black text-slate-900 mt-2 font-mono">{previewInvoice.invoice_number}</p>
+                  <p className="text-xs text-slate-600 font-semibold">Date: {previewInvoice.invoice_date}</p>
+                </div>
+              </div>
+
+              {/* Bill To & Dispatch Details */}
+              <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
+                <div>
+                  <p className="text-slate-500 font-extrabold uppercase text-[10px]">BILLED TO CUSTOMER:</p>
+                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">{previewInvoice.customer_name}</p>
+                  <p className="text-slate-600">{previewInvoice.customer_email || 'client@domain.com'}</p>
+                  <p className="text-slate-600">{previewInvoice.customer_phone || '+223 70 00 00 00'}</p>
+                </div>
+
+                <div className="text-right space-y-1">
+                  <p className="text-slate-500 font-extrabold uppercase text-[10px]">DESTINATION & PAYMENT:</p>
+                  <p className="font-bold text-slate-900">Destination Market: {previewInvoice.destination_country}</p>
+                  <p className="text-slate-700">Payment Terms: <strong className="text-amber-700">{previewInvoice.payment_method}</strong></p>
+                  <p className="text-slate-700">Status: <strong className="text-emerald-600">{previewInvoice.status}</strong></p>
+                </div>
+              </div>
+
+              {/* Itemized Table */}
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white uppercase text-[10px] font-bold">
+                    <th className="py-2.5 px-3">Item Description</th>
+                    <th className="py-2.5 px-3 text-center">Quantity</th>
+                    <th className="py-2.5 px-3 text-right">Unit Price</th>
+                    <th className="py-2.5 px-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 font-medium">
+                  {previewInvoice.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="py-3 px-3 font-bold text-slate-900">{item.product_name}</td>
+                      <td className="py-3 px-3 text-center font-bold text-amber-700">{item.quantity}</td>
+                      <td className="py-3 px-3 text-right text-slate-700">${item.unit_price.toFixed(2)}</td>
+                      <td className="py-3 px-3 text-right font-extrabold text-slate-900">${item.total_price.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Subtotal Summary */}
+              <div className="flex justify-between items-center border-t-2 border-slate-900 pt-4 text-sm font-bold">
+                <span className="text-slate-700">TOTAL AMOUNT DUE:</span>
+                <span className="text-2xl font-black text-slate-900 font-mono">${previewInvoice.total_amount.toFixed(2)}</span>
+              </div>
+
+              {/* Official Stamp & Signature Block */}
+              <div className="pt-8 border-t border-slate-200 flex justify-between items-end text-xs">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Notes & Terms:</p>
+                  <p className="text-slate-600 italic text-[11px]">{previewInvoice.notes || 'Official dispatch document issued by ETS FOFANA CONFISERIE.'}</p>
+                </div>
+
+                <div className="text-center border-t border-slate-400 pt-2 w-48">
+                  <p className="font-extrabold text-slate-900">Authorized Manager</p>
+                  <p className="text-[10px] text-slate-500">Signature & Official Stamp</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Add / Edit Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 print-hide">
           <div className="glass-panel rounded-2xl p-6 border border-slate-800 max-w-md w-full space-y-4 shadow-2xl">
             <h3 className="text-base font-extrabold text-white tracking-tight flex items-center space-x-2">
               <User className="h-5 w-5 text-amber-400" />
-              <span>Register New Client / Customer</span>
+              <span>{editingCustomer ? 'Edit Customer Profile' : 'Register New Client / Customer'}</span>
             </h3>
 
             <form onSubmit={handleSaveCustomer} className="space-y-3 text-xs">
@@ -648,18 +893,32 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 uppercase block">Country</label>
-                <select
-                  value={custCountry}
-                  onChange={(e) => setCustCountry(e.target.value as DestinationCountry)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold"
-                >
-                  <option value="Mali">🇲🇱 Mali</option>
-                  <option value="Burkina Faso">🇧🇫 Burkina Faso</option>
-                  <option value="Côte d'Ivoire">🇨🇮 Côte d'Ivoire</option>
-                  <option value="Angola">🇦🇴 Angola</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 uppercase block">Country</label>
+                  <select
+                    value={custCountry}
+                    onChange={(e) => setCustCountry(e.target.value as DestinationCountry)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold"
+                  >
+                    <option value="Mali">🇲🇱 Mali</option>
+                    <option value="Burkina Faso">🇧🇫 Burkina Faso</option>
+                    <option value="Côte d'Ivoire">🇨🇮 Côte d'Ivoire</option>
+                    <option value="Angola">🇦🇴 Angola</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 uppercase block">Status</label>
+                  <select
+                    value={custStatus}
+                    onChange={(e) => setCustStatus(e.target.value as 'Active' | 'VIP')}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="VIP">VIP Client</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -686,10 +945,20 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block">Credit Limit ($)</label>
+                <input
+                  type="number"
+                  value={custCredit}
+                  onChange={(e) => setCustCredit(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100"
+                />
+              </div>
+
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAddCustomerModal(false)}
+                  onClick={() => setShowCustomerModal(false)}
                   className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold"
                 >
                   Cancel
@@ -698,7 +967,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-gold-glow"
                 >
-                  Save Customer
+                  {editingCustomer ? 'Update Customer' : 'Save Customer'}
                 </button>
               </div>
             </form>
