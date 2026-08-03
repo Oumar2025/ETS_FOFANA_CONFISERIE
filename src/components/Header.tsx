@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between sticky top-0 z-40">
-      {/* Left: Mobile Toggle & Mobile Logo */}
+      {/* Left: Mobile Toggle & Clickable Company Logo */}
       <div className="flex items-center space-x-3">
         <button
           type="button"
@@ -52,27 +52,32 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="flex items-center space-x-2.5">
+        {/* Clickable Company Logo -> Settings */}
+        <button
+          onClick={() => setActiveModule('settings')}
+          className="flex items-center space-x-2.5 text-left group focus:outline-none"
+          title="Open System Settings & Company Profile"
+        >
           <img
             src="/ets_fofana_logo.jpg"
             alt="ETS FOFANA Logo"
-            className="h-9 w-9 rounded-xl object-cover border border-amber-500/40 shadow-gold-glow"
+            className="h-9 w-9 rounded-xl object-cover border border-amber-500/40 shadow-gold-glow group-hover:scale-105 transition"
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
             }}
           />
           <div className="hidden sm:block">
-            <span className="font-extrabold text-white text-sm tracking-tight block gold-gradient-text">
+            <span className="font-extrabold text-white text-sm tracking-tight block gold-gradient-text group-hover:underline">
               ETS FOFANA CONFISERIE
             </span>
             <span className="text-[10px] text-amber-500 font-semibold uppercase tracking-wider block">
-              FOF-AI BI v1.0
+              FOF-AI BI v2.0
             </span>
           </div>
-        </div>
+        </button>
       </div>
 
-      {/* Right Controls: Currency, Language, Alerts, User Profile */}
+      {/* Right Controls: Currency, Language, Alerts, Clickable User Profile */}
       <div className="flex items-center space-x-2 sm:space-x-4">
         {/* Currency Switcher */}
         <CurrencyToggle currentCurrency={currentCurrency} onCurrencyChange={onCurrencyChange} />
@@ -105,25 +110,31 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* User Profile Avatar & Role */}
+        {/* Clickable User Profile Avatar & Role -> Settings */}
         <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-600 p-0.5 shadow-md shrink-0 overflow-hidden">
-            {userSession.avatarUrl ? (
-              <img src={userSession.avatarUrl} alt={userSession.fullName} className="h-full w-full rounded-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-slate-950 rounded-full flex items-center justify-center">
-                <UserIcon className="h-4 w-4 text-amber-400" />
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setActiveModule('settings')}
+            className="flex items-center space-x-2 text-left group focus:outline-none"
+            title="Update Profile Picture & User Account"
+          >
+            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-600 p-0.5 shadow-md shrink-0 overflow-hidden group-hover:scale-105 transition">
+              {userSession.avatarUrl ? (
+                <img src={userSession.avatarUrl} alt={userSession.fullName} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-slate-950 rounded-full flex items-center justify-center">
+                  <UserIcon className="h-4 w-4 text-amber-400" />
+                </div>
+              )}
+            </div>
 
-          <div className="hidden md:block text-left text-xs">
-            <p className="font-bold text-slate-100 leading-tight">{userSession.fullName}</p>
-            <p className="text-[10px] text-emerald-400 font-semibold flex items-center space-x-1">
-              <ShieldCheck className="h-3 w-3" />
-              <span>{userSession.role}</span>
-            </p>
-          </div>
+            <div className="hidden md:block text-left text-xs">
+              <p className="font-bold text-slate-100 leading-tight group-hover:text-amber-400 transition">{userSession.fullName}</p>
+              <p className="text-[10px] text-emerald-400 font-semibold flex items-center space-x-1">
+                <ShieldCheck className="h-3 w-3" />
+                <span>{userSession.role}</span>
+              </p>
+            </div>
+          </button>
 
           <button
             onClick={onLogout}

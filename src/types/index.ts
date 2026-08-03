@@ -7,7 +7,10 @@ export type DestinationCountry = 'Mali' | 'Burkina Faso' | "Côte d'Ivoire" | 'A
 export type WarehouseLocation = 
   | 'Warehouse A (Bamako Central)' 
   | 'Warehouse B (Kayes Depot)' 
-  | 'Warehouse C (Sikasso Hub)';
+  | 'Warehouse C (Sikasso Hub)'
+  | 'Warehouse D (Bobo Central)'
+  | 'Warehouse E (Ango Depot)'
+  | 'Warehouse F (Abidjan Hub)';
 
 export type ProductStatus = 'In Stock' | 'Low Stock' | 'Critical Stock' | 'Approaching Expiry' | 'Expired';
 
@@ -23,6 +26,8 @@ export type UserRole =
 export type LanguageCode = 'en' | 'fr';
 
 export type CurrencyCode = 'USD' | 'FCFA' | 'EUR' | 'TRY';
+
+export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Check' | 'Credit / Account';
 
 export interface UserAccount {
   id: number | string;
@@ -64,11 +69,66 @@ export interface Product {
 
 export interface SalesHistory {
   sale_id: number;
+  invoice_number: string;
   product_id: number;
+  product_name: string;
+  customer_name: string;
+  destination_country: DestinationCountry;
   date: string;
   quantity_sold: number;
   unit_price: number;
   total_revenue: number;
+}
+
+export interface InvoiceItem {
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+export interface Invoice {
+  invoice_id: number;
+  invoice_number: string;
+  customer_id: number;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  destination_country: DestinationCountry;
+  invoice_date: string;
+  payment_method: PaymentMethod;
+  items: InvoiceItem[];
+  subtotal: number;
+  tax: number;
+  total_amount: number;
+  status: 'Paid' | 'Pending' | 'Overdue';
+  notes?: string;
+}
+
+export interface Customer {
+  customer_id: number;
+  name: string;
+  company_name: string;
+  country: DestinationCountry;
+  email: string;
+  phone: string;
+  total_orders: number;
+  total_spent: number;
+  credit_limit: number;
+  status: 'Active' | 'VIP' | 'On Hold';
+}
+
+export interface Supplier {
+  supplier_id: number;
+  supplier_name: string;
+  country: SupplierCountry;
+  contact_person: string;
+  email: string;
+  phone: string;
+  rating: number; // 1-5
+  lead_time_days: number;
+  products_supplied: string[];
 }
 
 export interface ExpiryAlert {
@@ -160,9 +220,12 @@ export interface DecisionSimulationResult {
 export interface WeeklyActionPlanDay {
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
   action: string;
+  actionFr?: string;
   productId?: number;
   productName?: string;
   priority: 'Low' | 'Medium' | 'High';
+  rationale?: string;     // Explicit "Why AI Decided This" rationale in English
+  rationaleFr?: string;   // Explicit "Why AI Decided This" rationale in French
 }
 
 export interface SystemSettingsConfig {

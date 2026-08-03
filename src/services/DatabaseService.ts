@@ -1,7 +1,10 @@
-import { Product, SalesHistory, ExpiryAlert, SeasonalEvent, SystemSettingsConfig, UserAccount } from '../types';
+import { Product, SalesHistory, ExpiryAlert, SeasonalEvent, SystemSettingsConfig, UserAccount, Invoice, Customer, Supplier } from '../types';
 
 const PRODUCTS_KEY = 'fof_ai_products';
 const SALES_KEY = 'fof_ai_sales';
+const INVOICES_KEY = 'fof_ai_invoices';
+const CUSTOMERS_KEY = 'fof_ai_customers';
+const SUPPLIERS_KEY = 'fof_ai_suppliers';
 const EVENTS_KEY = 'fof_ai_events';
 const ALERTS_KEY = 'fof_ai_alerts';
 const SETTINGS_KEY = 'fof_ai_settings';
@@ -18,7 +21,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     brand: 'Mondelez Turkey',
     supplier_country: 'Turkey',
     destination_country: 'Mali',
-    quantity: 450,
+    quantity: 750,
     unit: 'Cartons',
     cost_price: 18.50,
     selling_price: 26.00,
@@ -92,7 +95,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     selling_price: 29.50,
     manufacture_date: '2026-04-10',
     expiry_date: '2027-04-10',
-    warehouse: 'Warehouse A (Bamako Central)',
+    warehouse: 'Warehouse D (Bobo Central)',
     status: 'In Stock',
     notes: 'Consistent year-round sales'
   },
@@ -109,7 +112,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     selling_price: 13.00,
     manufacture_date: '2025-08-03',
     expiry_date: '2026-08-03',
-    warehouse: 'Warehouse B (Kayes Depot)',
+    warehouse: 'Warehouse E (Ango Depot)',
     status: 'Critical Stock',
     notes: 'Requires immediate clearance sale'
   },
@@ -136,20 +139,20 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'Chocolates',
     brand: 'Lacta Mondelez Brazil',
     supplier_country: 'Brazil',
-    destination_country: 'Mali',
+    destination_country: "Côte d'Ivoire",
     quantity: 1100,
     unit: 'Cartons',
     cost_price: 28.00,
     selling_price: 42.00,
     manufacture_date: '2026-05-01',
     expiry_date: '2027-05-01',
-    warehouse: 'Warehouse A (Bamako Central)',
+    warehouse: 'Warehouse F (Abidjan Hub)',
     status: 'In Stock',
     notes: 'Premium Brazilian chocolate gift boxes'
   },
   {
     product_id: 9,
-    product_name: 'Ibon',
+    product_name: 'Ibon Fruity Sweets 200g',
     category: 'Candy',
     brand: 'Ibon Sweets Turkey',
     supplier_country: 'Turkey',
@@ -160,9 +163,244 @@ export const INITIAL_PRODUCTS: Product[] = [
     selling_price: 30.00,
     manufacture_date: '2026-03-01',
     expiry_date: '2027-03-01',
-    warehouse: 'Warehouse B (Kayes Depot)',
+    warehouse: 'Warehouse D (Bobo Central)',
     status: 'In Stock',
     notes: 'Imported for Burkina Faso regional network'
+  }
+];
+
+export const INITIAL_CUSTOMERS: Customer[] = [
+  {
+    customer_id: 1,
+    name: 'ABC Trading SARL',
+    company_name: 'ABC Trading Mali',
+    country: 'Mali',
+    email: 'contact@abctrading-mali.com',
+    phone: '+223 76 12 34 56',
+    total_orders: 14,
+    total_spent: 38500.00,
+    credit_limit: 50000.00,
+    status: 'VIP'
+  },
+  {
+    customer_id: 2,
+    name: 'XYZ Distribution Market',
+    company_name: 'XYZ Market Burkina Faso',
+    country: 'Burkina Faso',
+    email: 'procurement@xyzmarket-bf.com',
+    phone: '+226 70 88 99 00',
+    total_orders: 8,
+    total_spent: 19400.00,
+    credit_limit: 25000.00,
+    status: 'Active'
+  },
+  {
+    customer_id: 3,
+    name: 'Bamako Central Retail Group',
+    company_name: 'Retail Shop Mali',
+    country: 'Mali',
+    email: 'orders@bamakoretail.ml',
+    phone: '+223 66 55 44 33',
+    total_orders: 19,
+    total_spent: 42100.00,
+    credit_limit: 60000.00,
+    status: 'VIP'
+  },
+  {
+    customer_id: 4,
+    name: 'Abidjan Grand Wholesale',
+    company_name: 'Abidjan Confectionery Depot',
+    country: "Côte d'Ivoire",
+    email: 'sales@abidjanwholesale.ci',
+    phone: '+225 07 44 33 22',
+    total_orders: 6,
+    total_spent: 22750.00,
+    credit_limit: 30000.00,
+    status: 'Active'
+  },
+  {
+    customer_id: 5,
+    name: 'Luanda Sweet Importers',
+    company_name: 'Luanda Imports Angola',
+    country: 'Angola',
+    email: 'info@luandaimports.ao',
+    phone: '+244 92 11 22 33',
+    total_orders: 3,
+    total_spent: 9800.00,
+    credit_limit: 15000.00,
+    status: 'Active'
+  }
+];
+
+export const INITIAL_SUPPLIERS: Supplier[] = [
+  {
+    supplier_id: 1,
+    supplier_name: 'Mondelez Gida Turkey',
+    country: 'Turkey',
+    contact_person: 'Ahmet Yilmaz',
+    email: 'export@mondelez.tr',
+    phone: '+90 212 555 0199',
+    rating: 4.9,
+    lead_time_days: 14,
+    products_supplied: ['Oreo Original Chocolate Biscuits', 'Lacta Sonho de Valsa Bonbons']
+  },
+  {
+    supplier_id: 2,
+    supplier_name: 'Sultan Food & Dates Industries',
+    country: 'Tunisia',
+    contact_person: 'Tarek Ben Ali',
+    email: 'sales@sultanfood.tn',
+    phone: '+216 71 888 222',
+    rating: 4.8,
+    lead_time_days: 10,
+    products_supplied: ['Sultan Premium Deglet Noor Dates']
+  },
+  {
+    supplier_id: 3,
+    supplier_name: 'Atlas Confectionery Morocco SA',
+    country: 'Morocco',
+    contact_person: 'Karim El Mansouri',
+    email: 'contact@atlasconf.ma',
+    phone: '+212 522 334455',
+    rating: 4.7,
+    lead_time_days: 12,
+    products_supplied: ['Atlas Wafer Deluxe Hazelnut', 'Maghreb Honey Almond Chebakia']
+  },
+  {
+    supplier_id: 4,
+    supplier_name: 'Chocolates Garoto Brazil',
+    country: 'Brazil',
+    contact_person: 'Fernanda Silva',
+    email: 'export@garoto.com.br',
+    phone: '+55 27 3321 8000',
+    rating: 4.6,
+    lead_time_days: 22,
+    products_supplied: ['Garoto Milk Chocolate Bonbons', 'Lacta Sonho de Valsa Bonbons']
+  }
+];
+
+export const INITIAL_INVOICES: Invoice[] = [
+  {
+    invoice_id: 1,
+    invoice_number: 'INV-2026-001',
+    customer_id: 1,
+    customer_name: 'ABC Trading SARL',
+    customer_email: 'contact@abctrading-mali.com',
+    customer_phone: '+223 76 12 34 56',
+    destination_country: 'Mali',
+    invoice_date: '2026-08-01',
+    payment_method: 'Bank Transfer',
+    items: [
+      { product_id: 1, product_name: 'Oreo Original Chocolate Biscuits 154g', quantity: 250, unit_price: 26.00, total_price: 6500.00 },
+      { product_id: 2, product_name: 'Sultan Premium Deglet Noor Dates 500g', quantity: 100, unit_price: 48.00, total_price: 4800.00 }
+    ],
+    subtotal: 11300.00,
+    tax: 0,
+    total_amount: 11300.00,
+    status: 'Paid',
+    notes: 'Delivered to Bamako Central Depot'
+  },
+  {
+    invoice_id: 2,
+    invoice_number: 'INV-2026-002',
+    customer_id: 2,
+    customer_name: 'XYZ Distribution Market',
+    customer_email: 'procurement@xyzmarket-bf.com',
+    customer_phone: '+226 70 88 99 00',
+    destination_country: 'Burkina Faso',
+    invoice_date: '2026-08-02',
+    payment_method: 'Cash',
+    items: [
+      { product_id: 3, product_name: 'Atlas Wafer Deluxe Hazelnut 45g', quantity: 100, unit_price: 17.50, total_price: 1750.00 },
+      { product_id: 9, product_name: 'Ibon Fruity Sweets 200g', quantity: 50, unit_price: 30.00, total_price: 1500.00 }
+    ],
+    subtotal: 3250.00,
+    tax: 0,
+    total_amount: 3250.00,
+    status: 'Paid',
+    notes: 'Shipped to Bobo Dioulasso Wholesale Network'
+  },
+  {
+    invoice_id: 3,
+    invoice_number: 'INV-2026-003',
+    customer_id: 3,
+    customer_name: 'Bamako Central Retail Group',
+    customer_email: 'orders@bamakoretail.ml',
+    customer_phone: '+223 66 55 44 33',
+    destination_country: 'Mali',
+    invoice_date: '2026-08-03',
+    payment_method: 'Credit / Account',
+    items: [
+      { product_id: 7, product_name: 'Maghreb Honey Almond Chebakia 400g', quantity: 50, unit_price: 23.00, total_price: 1150.00 }
+    ],
+    subtotal: 1150.00,
+    tax: 0,
+    total_amount: 1150.00,
+    status: 'Pending',
+    notes: '15-day payment term'
+  }
+];
+
+export const INITIAL_SALES_HISTORY: SalesHistory[] = [
+  {
+    sale_id: 1,
+    invoice_number: 'INV-2026-001',
+    product_id: 1,
+    product_name: 'Oreo Original Chocolate Biscuits 154g',
+    customer_name: 'ABC Trading SARL',
+    destination_country: 'Mali',
+    date: '2026-08-01',
+    quantity_sold: 250,
+    unit_price: 26.00,
+    total_revenue: 6500.00
+  },
+  {
+    sale_id: 2,
+    invoice_number: 'INV-2026-001',
+    product_id: 2,
+    product_name: 'Sultan Premium Deglet Noor Dates 500g',
+    customer_name: 'ABC Trading SARL',
+    destination_country: 'Mali',
+    date: '2026-08-01',
+    quantity_sold: 100,
+    unit_price: 48.00,
+    total_revenue: 4800.00
+  },
+  {
+    sale_id: 3,
+    invoice_number: 'INV-2026-002',
+    product_id: 3,
+    product_name: 'Atlas Wafer Deluxe Hazelnut 45g',
+    customer_name: 'XYZ Distribution Market',
+    destination_country: 'Burkina Faso',
+    date: '2026-08-02',
+    quantity_sold: 100,
+    unit_price: 17.50,
+    total_revenue: 1750.00
+  },
+  {
+    sale_id: 4,
+    invoice_number: 'INV-2026-002',
+    product_id: 9,
+    product_name: 'Ibon Fruity Sweets 200g',
+    customer_name: 'XYZ Distribution Market',
+    destination_country: 'Burkina Faso',
+    date: '2026-08-02',
+    quantity_sold: 50,
+    unit_price: 30.00,
+    total_revenue: 1500.00
+  },
+  {
+    sale_id: 5,
+    invoice_number: 'INV-2026-003',
+    product_id: 7,
+    product_name: 'Maghreb Honey Almond Chebakia 400g',
+    customer_name: 'Bamako Central Retail Group',
+    destination_country: 'Mali',
+    date: '2026-08-03',
+    quantity_sold: 50,
+    unit_price: 23.00,
+    total_revenue: 1150.00
   }
 ];
 
@@ -267,6 +505,18 @@ export class DatabaseService {
     if (!localStorage.getItem(PRODUCTS_KEY)) {
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(INITIAL_PRODUCTS));
     }
+    if (!localStorage.getItem(INVOICES_KEY)) {
+      localStorage.setItem(INVOICES_KEY, JSON.stringify(INITIAL_INVOICES));
+    }
+    if (!localStorage.getItem(SALES_KEY)) {
+      localStorage.setItem(SALES_KEY, JSON.stringify(INITIAL_SALES_HISTORY));
+    }
+    if (!localStorage.getItem(CUSTOMERS_KEY)) {
+      localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(INITIAL_CUSTOMERS));
+    }
+    if (!localStorage.getItem(SUPPLIERS_KEY)) {
+      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(INITIAL_SUPPLIERS));
+    }
     if (!localStorage.getItem(EVENTS_KEY)) {
       localStorage.setItem(EVENTS_KEY, JSON.stringify(INITIAL_SEASONAL_EVENTS));
     }
@@ -280,15 +530,12 @@ export class DatabaseService {
 
   // --- Real-time Centralized Cloud Database Sync across all Phones, Tablets & Laptops ---
   private async startCloudDatabaseSync() {
-    // Initial fetch from Cloud DB
     await this.fetchFromCloudDatabase();
 
-    // Periodically sync live every 5 seconds
     setInterval(() => {
       this.fetchFromCloudDatabase();
     }, 5000);
 
-    // Sync immediately when user switches tabs or focuses device screen
     if (typeof window !== 'undefined') {
       window.addEventListener('focus', () => {
         this.fetchFromCloudDatabase();
@@ -312,6 +559,22 @@ export class DatabaseService {
 
           if (cloudState.products && Array.isArray(cloudState.products) && cloudState.products.length > 0) {
             localStorage.setItem(PRODUCTS_KEY, JSON.stringify(cloudState.products));
+            hasUpdated = true;
+          }
+          if (cloudState.invoices && Array.isArray(cloudState.invoices)) {
+            localStorage.setItem(INVOICES_KEY, JSON.stringify(cloudState.invoices));
+            hasUpdated = true;
+          }
+          if (cloudState.sales && Array.isArray(cloudState.sales)) {
+            localStorage.setItem(SALES_KEY, JSON.stringify(cloudState.sales));
+            hasUpdated = true;
+          }
+          if (cloudState.customers && Array.isArray(cloudState.customers)) {
+            localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(cloudState.customers));
+            hasUpdated = true;
+          }
+          if (cloudState.suppliers && Array.isArray(cloudState.suppliers)) {
+            localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(cloudState.suppliers));
             hasUpdated = true;
           }
           if (cloudState.users && Array.isArray(cloudState.users) && cloudState.users.length > 0) {
@@ -341,7 +604,6 @@ export class DatabaseService {
           this.isSyncing = false;
           return hasUpdated;
         } else {
-          // Cloud endpoint empty, seed initial data to cloud
           await this.pushToCloudDatabase();
         }
       }
@@ -356,6 +618,10 @@ export class DatabaseService {
     try {
       const cloudState = {
         products: this.getProducts(),
+        invoices: this.getInvoices(),
+        sales: this.getSalesHistory(),
+        customers: this.getCustomers(),
+        suppliers: this.getSuppliers(),
         users: this.getUsers(),
         events: this.getSeasonalEvents(),
         alerts: this.getAlertHistory(),
@@ -454,6 +720,146 @@ export class DatabaseService {
       return true;
     }
     return false;
+  }
+
+  // --- Invoices & Sales History Engine (AUTOMATIC INVENTORY DEDUCTION) ---
+  public getInvoices(): Invoice[] {
+    try {
+      const data = localStorage.getItem(INVOICES_KEY);
+      return data ? JSON.parse(data) : INITIAL_INVOICES;
+    } catch {
+      return INITIAL_INVOICES;
+    }
+  }
+
+  public getSalesHistory(): SalesHistory[] {
+    try {
+      const data = localStorage.getItem(SALES_KEY);
+      return data ? JSON.parse(data) : INITIAL_SALES_HISTORY;
+    } catch {
+      return INITIAL_SALES_HISTORY;
+    }
+  }
+
+  public saveInvoices(invoices: Invoice[]) {
+    localStorage.setItem(INVOICES_KEY, JSON.stringify(invoices));
+    this.pushToCloudDatabase();
+  }
+
+  public saveSalesHistory(sales: SalesHistory[]) {
+    localStorage.setItem(SALES_KEY, JSON.stringify(sales));
+    this.pushToCloudDatabase();
+  }
+
+  // CORE BUSINESS ENGINE: Generate Invoice + Automatic Stock Deduction + Sales History + CRM update
+  public createInvoice(invoiceData: Omit<Invoice, 'invoice_id' | 'invoice_number'>): Invoice {
+    const invoices = this.getInvoices();
+    const salesHistory = this.getSalesHistory();
+    const products = this.getProducts();
+    const customers = this.getCustomers();
+
+    const newInvoiceId = invoices.length > 0 ? Math.max(...invoices.map(i => i.invoice_id)) + 1 : 1;
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(newInvoiceId).padStart(3, '0')}`;
+
+    const newInvoice: Invoice = {
+      ...invoiceData,
+      invoice_id: newInvoiceId,
+      invoice_number: invoiceNumber
+    };
+
+    invoices.unshift(newInvoice);
+    this.saveInvoices(invoices);
+
+    // 1. AUTOMATIC STOCK DEDUCTION (e.g. 1000 - 250 = 750 Cartons)
+    newInvoice.items.forEach(item => {
+      const product = products.find(p => p.product_id === item.product_id);
+      if (product) {
+        product.quantity = Math.max(0, product.quantity - item.quantity);
+        // Recalculate status
+        const now = new Date();
+        const exp = new Date(product.expiry_date);
+        const daysRemaining = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysRemaining <= 0) product.status = 'Expired';
+        else if (daysRemaining <= 7 || daysRemaining <= 30) product.status = 'Approaching Expiry';
+        else if (product.quantity < 100) product.status = 'Critical Stock';
+        else if (product.quantity < 300) product.status = 'Low Stock';
+        else product.status = 'In Stock';
+
+        // 2. AUTOMATIC SALES HISTORY RECORDING
+        const newSaleId = salesHistory.length > 0 ? Math.max(...salesHistory.map(s => s.sale_id)) + 1 : 1;
+        salesHistory.unshift({
+          sale_id: newSaleId,
+          invoice_number: invoiceNumber,
+          product_id: item.product_id,
+          product_name: item.product_name,
+          customer_name: newInvoice.customer_name,
+          destination_country: newInvoice.destination_country,
+          date: newInvoice.invoice_date,
+          quantity_sold: item.quantity,
+          unit_price: item.unit_price,
+          total_revenue: item.total_price
+        });
+      }
+    });
+
+    this.saveProducts(products);
+    this.saveSalesHistory(salesHistory);
+
+    // 3. AUTOMATIC CUSTOMER CRM SPENDING UPDATE
+    const customer = customers.find(c => c.customer_id === newInvoice.customer_id || c.name.toLowerCase() === newInvoice.customer_name.toLowerCase());
+    if (customer) {
+      customer.total_orders += 1;
+      customer.total_spent += newInvoice.total_amount;
+      if (customer.total_spent > 30000) customer.status = 'VIP';
+      this.saveCustomers(customers);
+    }
+
+    this.pushToCloudDatabase();
+    return newInvoice;
+  }
+
+  // --- Customers (CRM) ---
+  public getCustomers(): Customer[] {
+    try {
+      const data = localStorage.getItem(CUSTOMERS_KEY);
+      return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
+    } catch {
+      return INITIAL_CUSTOMERS;
+    }
+  }
+
+  public saveCustomers(customers: Customer[]) {
+    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
+    this.pushToCloudDatabase();
+  }
+
+  public addCustomer(customer: Omit<Customer, 'customer_id' | 'total_orders' | 'total_spent'>): Customer {
+    const customers = this.getCustomers();
+    const newId = customers.length > 0 ? Math.max(...customers.map(c => c.customer_id)) + 1 : 1;
+    const newCust: Customer = {
+      ...customer,
+      customer_id: newId,
+      total_orders: 0,
+      total_spent: 0
+    };
+    customers.push(newCust);
+    this.saveCustomers(customers);
+    return newCust;
+  }
+
+  // --- Suppliers ---
+  public getSuppliers(): Supplier[] {
+    try {
+      const data = localStorage.getItem(SUPPLIERS_KEY);
+      return data ? JSON.parse(data) : INITIAL_SUPPLIERS;
+    } catch {
+      return INITIAL_SUPPLIERS;
+    }
+  }
+
+  public saveSuppliers(suppliers: Supplier[]) {
+    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
+    this.pushToCloudDatabase();
   }
 
   // --- Users & RBAC ---
@@ -592,6 +998,10 @@ export class DatabaseService {
 
   public resetToSeed() {
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(INITIAL_PRODUCTS));
+    localStorage.setItem(INVOICES_KEY, JSON.stringify(INITIAL_INVOICES));
+    localStorage.setItem(SALES_KEY, JSON.stringify(INITIAL_SALES_HISTORY));
+    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(INITIAL_CUSTOMERS));
+    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(INITIAL_SUPPLIERS));
     localStorage.setItem(EVENTS_KEY, JSON.stringify(INITIAL_SEASONAL_EVENTS));
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
     localStorage.setItem(USERS_KEY, JSON.stringify(INITIAL_USERS));

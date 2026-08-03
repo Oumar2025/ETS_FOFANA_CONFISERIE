@@ -1,7 +1,8 @@
 import React from 'react';
 
 interface CountryFlagProps {
-  country: string;
+  country?: string;
+  countryName?: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -17,8 +18,9 @@ const countrySlugMap: Record<string, string> = {
   'Angola': 'angola'
 };
 
-export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className = '', size = 'md' }) => {
-  const slug = countrySlugMap[country] || 'mali';
+export const CountryFlag: React.FC<CountryFlagProps> = ({ country, countryName, className = '', size = 'md' }) => {
+  const targetCountry = country || countryName || 'Mali';
+  const slug = countrySlugMap[targetCountry] || 'mali';
 
   let dimensions = 'h-4 w-6';
   if (size === 'sm') dimensions = 'h-3.5 w-5';
@@ -28,10 +30,10 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({ country, className = '
     <img
       src={`/flags/${slug}.svg`}
       onError={(e) => {
-        // Fallback to .png if .svg is not found or user dropped .png files
+        // Fallback to .png if .svg is not found
         (e.target as HTMLImageElement).src = `/flags/${slug}.png`;
       }}
-      alt={`${country} flag`}
+      alt={`${targetCountry} flag`}
       className={`inline-block object-cover rounded shadow-sm border border-slate-700/50 ${dimensions} ${className}`}
     />
   );

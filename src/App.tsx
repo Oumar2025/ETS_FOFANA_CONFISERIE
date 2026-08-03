@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { InventoryPage } from './pages/InventoryPage';
+import { SalesInvoicePage } from './pages/SalesInvoicePage';
 import { ForecastPage } from './pages/ForecastPage';
 import { AIAssistantPage } from './pages/AIAssistantPage';
 import { AlertCenterPage } from './pages/AlertCenterPage';
@@ -131,6 +132,7 @@ export const App: React.FC = () => {
           {activeModule === 'home' && <HomePage setActiveModule={setActiveModule} currentLanguage={currentLanguage} />}
           {activeModule === 'dashboard' && <DashboardPage setActiveModule={setActiveModule} currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
           {activeModule === 'inventory' && <InventoryPage userSession={userSession} currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
+          {activeModule === 'salesInvoice' && <SalesInvoicePage currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
           {activeModule === 'forecast' && <ForecastPage currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
           {activeModule === 'assistant' && <AIAssistantPage />}
           {activeModule === 'alerts' && <AlertCenterPage onAlertsUpdated={refreshAlertCount} />}
