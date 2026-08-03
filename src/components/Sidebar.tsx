@@ -13,7 +13,7 @@ import {
   ChevronRight,
   X
 } from 'lucide-react';
-import { LanguageCode } from '../types';
+import { LanguageCode, UserRole } from '../types';
 import { translations } from '../i18n/translations';
 
 interface SidebarProps {
@@ -21,6 +21,7 @@ interface SidebarProps {
   setActiveModule: (module: string) => void;
   alertCount: number;
   currentLanguage: LanguageCode;
+  userRole?: UserRole;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -30,12 +31,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveModule,
   alertCount,
   currentLanguage,
+  userRole = 'Super Administrator',
   isMobileOpen,
   onCloseMobile
 }) => {
   const t = translations[currentLanguage];
 
-  const menuItems = [
+  const allMenuItems = [
     { id: 'home', label: t.home, icon: Home },
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
     { id: 'inventory', label: t.inventory, icon: Boxes, badge: 'Stock' },
@@ -46,6 +48,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'reports', label: t.reports, icon: FileSpreadsheet },
     { id: 'settings', label: t.settings, icon: Settings }
   ];
+
+  // Role-Based Navigation Menu Filtering
+  const menuItems = allMenuItems.filter(item => {
+    if (userRole === 'Super Administrator' || userRole === 'General Manager' || (userRole as string) === 'Administrator') {
+      return true; // Full access
+    }
+    if (userRole === 'Inventory Manager') {
+      return ['home', 'dashboard', 'inventory', 'forecast', 'assistant', 'alerts', 'reports'].includes(item.id);
+    }
+    if (userRole === 'Warehouse Manager') {
+      return ['home', 'dashboard', 'inventory', 'alerts'].includes(item.id);
+    }
+    if (userRole === 'Procurement Officer') {
+      return ['home', 'dashboard', 'inventory', 'forecast', 'assistant'].includes(item.id);
+    }
+    if (userRole === 'Sales Manager') {
+      return ['home', 'dashboard', 'salesInvoice', 'assistant', 'alerts', 'reports'].includes(item.id);
+    }
+    if (userRole === 'Finance Manager') {
+      return ['home', 'dashboard', 'salesInvoice', 'reports', 'forecast', 'assistant'].includes(item.id);
+    }
+    return true;
+  });
 
   const handleSelectModule = (id: string) => {
     setActiveModule(id);
@@ -104,9 +129,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Navigation Links */}
           <nav className="space-y-1">
-            <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-2">
-              Main Modules
-            </p>
+            <div className="px-3 flex items-center justify-between mb-2">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                Main Modules
+              </p>
+              <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                {userRole.split(' ')[0]}
+              </span>
+            </div>
+
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeModule === item.id;
@@ -156,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>FOF-AI BI v2.0</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-snug">
-              Sales, Invoices, CRM & Inventory Intelligence Platform
+              Role-Based Enterprise ERP & Intelligence
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { Product, SalesHistory, ExpiryAlert, SeasonalEvent, SystemSettingsConfig, UserAccount, Invoice, Customer, Supplier } from '../types';
+import { Product, SalesHistory, ExpiryAlert, SeasonalEvent, SystemSettingsConfig, UserAccount, Invoice, Customer, Supplier, AuditLogEntry } from '../types';
 
 const PRODUCTS_KEY = 'fof_ai_products';
 const SALES_KEY = 'fof_ai_sales';
@@ -474,12 +474,13 @@ export const INITIAL_USERS: UserAccount[] = [
   {
     id: 1,
     username: 'admin',
-    passwordHash: 'fofana2026',
-    role: 'Administrator',
-    fullName: 'FOFANA OUMAROU',
+    passwordHash: 'Fofana@2026!',
+    role: 'Super Administrator',
+    fullName: 'FOFANA OUMAROU (Super Admin)',
     email: 'hp.oumaroulife2023@gmail.com',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    createdAt: '2026-01-01'
+    createdAt: '2026-01-01',
+    status: 'Active'
   },
   {
     id: 2,
@@ -489,7 +490,58 @@ export const INITIAL_USERS: UserAccount[] = [
     fullName: 'Oumarou Fofana',
     email: 'f.oumarou78@gmail.com',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    createdAt: '2026-01-05'
+    createdAt: '2026-01-05',
+    status: 'Active'
+  },
+  {
+    id: 3,
+    username: 'inv_manager',
+    passwordHash: 'Fofana@2026!',
+    role: 'Inventory Manager',
+    fullName: 'Mariam Coulibaly',
+    email: 'm.coulibaly@fofana.ml',
+    createdAt: '2026-01-10',
+    status: 'Active'
+  },
+  {
+    id: 4,
+    username: 'sales_mgr',
+    passwordHash: 'Fofana@2026!',
+    role: 'Sales Manager',
+    fullName: 'Ahmed Traoré',
+    email: 'a.traore@fofana.ml',
+    createdAt: '2026-01-15',
+    status: 'Active'
+  },
+  {
+    id: 5,
+    username: 'wh_manager',
+    passwordHash: 'Fofana@2026!',
+    role: 'Warehouse Manager',
+    fullName: 'Bakary Diallo',
+    email: 'b.diallo@fofana.ml',
+    createdAt: '2026-01-20',
+    status: 'Active'
+  },
+  {
+    id: 6,
+    username: 'procurement',
+    passwordHash: 'Fofana@2026!',
+    role: 'Procurement Officer',
+    fullName: 'Sitan Diarra',
+    email: 's.diarra@fofana.ml',
+    createdAt: '2026-01-25',
+    status: 'Active'
+  },
+  {
+    id: 7,
+    username: 'finance_mgr',
+    passwordHash: 'Fofana@2026!',
+    role: 'Finance Manager',
+    fullName: 'Mamadou Keita',
+    email: 'm.keita@fofana.ml',
+    createdAt: '2026-02-01',
+    status: 'Active'
   }
 ];
 
@@ -917,16 +969,57 @@ export class DatabaseService {
     this.pushToCloudDatabase();
   }
 
-  public authenticateUser(username: string, passwordPlain: string): UserAccount | null {
+  public authenticateUser(username: string, passwordPlain: string): {
+    success: boolean;
+    user?: UserAccount;
+    error?: string;
+  } {
     const users = this.getUsers();
     const user = users.find(u => u.username.toLowerCase().trim() === username.toLowerCase().trim());
-    if (user && user.passwordHash === passwordPlain) {
-      return user;
+    if (!user) {
+      return { success: false, error: 'Invalid username or password.' };
     }
-    return null;
+
+    if (user.status === 'Disabled' || user.status === 'Suspended' || user.status === 'Inactive') {
+      return { success: false, error: `Account is currently ${user.status.toLowerCase()}. Please contact your Super Administrator.` };
+    }
+
+    if (user.lockedUntil) {
+      const lockedTime = new Date(user.lockedUntil).getTime();
+      if (Date.now() < lockedTime) {
+        const remainingMins = Math.max(1, Math.ceil((lockedTime - Date.now()) / (1000 * 60)));
+        return { success: false, error: `Account temporarily locked after 5 failed attempts. Please try again in ${remainingMins} minutes.` };
+      } else {
+        user.lockedUntil = undefined;
+        user.failedLoginAttempts = 0;
+      }
+    }
+
+    if (user.passwordHash === passwordPlain) {
+      user.failedLoginAttempts = 0;
+      user.lastLogin = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      this.saveUsers(users);
+
+      this.addAuditLog(user.fullName, user.role, 'User Login', `Logged in successfully from ${user.username}`, 'Authentication');
+
+      return {
+        success: true,
+        user
+      };
+    } else {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= 5) {
+        user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        this.saveUsers(users);
+        this.addAuditLog('System Security', 'Security', 'Account Locked', `Account ${username} locked due to 5 consecutive failed login attempts`, 'Security');
+        return { success: false, error: 'Security Lockout: Account locked for 15 minutes after 5 failed login attempts.' };
+      }
+      this.saveUsers(users);
+      return { success: false, error: `Invalid password. Failed attempt ${user.failedLoginAttempts} of 5.` };
+    }
   }
 
-  public saveUser(user: Omit<UserAccount, 'id' | 'createdAt'>): { success: boolean; error?: string } {
+  public saveUser(user: Omit<UserAccount, 'id' | 'createdAt'>, actorName: string = 'Super Administrator'): { success: boolean; error?: string } {
     const users = this.getUsers();
     if (users.some(u => u.username.toLowerCase() === user.username.toLowerCase())) {
       return { success: false, error: 'Username is already taken.' };
@@ -939,20 +1032,53 @@ export class DatabaseService {
     const newUser: UserAccount = {
       ...user,
       id: newId,
+      status: user.status || 'Active',
+      mustChangePassword: user.mustChangePassword ?? true,
       createdAt: new Date().toISOString().split('T')[0]
     };
 
     users.push(newUser);
     this.saveUsers(users);
+    this.addAuditLog(actorName, 'Administrator', 'Created Employee Account', `Created account ${user.username} (${user.role}) for ${user.fullName}`, 'User Management');
     return { success: true };
   }
 
-  public deleteUser(usernameToDelete: string, requestingUserRole: string): { success: boolean; error?: string } {
-    if (requestingUserRole !== 'Administrator') {
-      return { success: false, error: 'Access Denied: Only Administrators can delete registered user accounts.' };
+  public updateUserStatus(usernameToUpdate: string, newStatus: UserAccount['status'], actorName: string = 'Super Administrator'): { success: boolean; error?: string } {
+    if (usernameToUpdate.toLowerCase() === 'admin') {
+      return { success: false, error: 'Super Administrator account status cannot be modified.' };
+    }
+    const users = this.getUsers();
+    const user = users.find(u => u.username.toLowerCase() === usernameToUpdate.toLowerCase());
+    if (user) {
+      user.status = newStatus;
+      this.saveUsers(users);
+      this.addAuditLog(actorName, 'Administrator', 'Updated User Status', `Changed account status of ${usernameToUpdate} to ${newStatus}`, 'User Management');
+      return { success: true };
+    }
+    return { success: false, error: 'User not found.' };
+  }
+
+  public resetUserPassword(usernameToReset: string, newPasswordPlain: string, forceChangeOnFirstLogin: boolean = true, actorName: string = 'Super Administrator'): { success: boolean; error?: string } {
+    const users = this.getUsers();
+    const user = users.find(u => u.username.toLowerCase() === usernameToReset.toLowerCase());
+    if (user) {
+      user.passwordHash = newPasswordPlain;
+      user.mustChangePassword = forceChangeOnFirstLogin;
+      user.failedLoginAttempts = 0;
+      user.lockedUntil = undefined;
+      this.saveUsers(users);
+      this.addAuditLog(actorName, 'Administrator', 'Reset User Password', `Reset password for user ${usernameToReset}`, 'User Management');
+      return { success: true };
+    }
+    return { success: false, error: 'User not found.' };
+  }
+
+  public deleteUser(usernameToDelete: string, requestingUserRole: string, actorName: string = 'Super Administrator'): { success: boolean; error?: string } {
+    if (!['Super Administrator', 'Administrator'].includes(requestingUserRole)) {
+      return { success: false, error: 'Access Denied: Only Super Administrators can delete user accounts.' };
     }
     if (usernameToDelete.toLowerCase() === 'admin') {
-      return { success: false, error: 'Root admin account cannot be deleted.' };
+      return { success: false, error: 'Root Super Administrator account cannot be deleted.' };
     }
 
     let users = this.getUsers();
@@ -961,6 +1087,7 @@ export class DatabaseService {
     
     if (users.length < initialLen) {
       this.saveUsers(users);
+      this.addAuditLog(actorName, requestingUserRole, 'Deleted User Account', `Deleted user account ${usernameToDelete}`, 'User Management');
       return { success: true };
     }
     return { success: false, error: 'User not found.' };
@@ -972,16 +1099,91 @@ export class DatabaseService {
     if (user) {
       Object.assign(user, updates);
       this.saveUsers(users);
+      this.addAuditLog(user.fullName, user.role, 'Updated Profile', `Updated profile info for ${username}`, 'User Profile');
       return { success: true };
     }
     return { success: false };
   }
 
-  public validatePasswordStrength(password: string): { valid: boolean; message?: string } {
-    if (password.length < 6) {
-      return { valid: false, message: 'Password must be at least 6 characters long.' };
+  public validatePasswordPolicy(password: string): {
+    valid: boolean;
+    length: boolean;
+    uppercase: boolean;
+    lowercase: boolean;
+    number: boolean;
+    special: boolean;
+    message?: string;
+  } {
+    const length = password.length >= 10;
+    const uppercase = /[A-Z]/.test(password);
+    const lowercase = /[a-z]/.test(password);
+    const number = /[0-9]/.test(password);
+    const special = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+    const valid = length && uppercase && lowercase && number && special;
+    let message = '';
+    if (!length) message = 'Password must be at least 10 characters long.';
+    else if (!uppercase) message = 'Password must contain at least 1 uppercase letter (A-Z).';
+    else if (!lowercase) message = 'Password must contain at least 1 lowercase letter (a-z).';
+    else if (!number) message = 'Password must contain at least 1 number (0-9).';
+    else if (!special) message = 'Password must contain at least 1 special character (e.g. !@#$).';
+
+    return { valid, length, uppercase, lowercase, number, special, message };
+  }
+
+  // --- Audit Trail System ---
+  public getAuditLogs(): AuditLogEntry[] {
+    try {
+      const data = localStorage.getItem('fof_ai_audit_logs');
+      return data ? JSON.parse(data) : [
+        {
+          id: 'log-1',
+          timestamp: '2026-08-01 10:14:02',
+          actorName: 'FOFANA OUMAROU (Super Admin)',
+          actorRole: 'Super Administrator',
+          action: 'Updated Product Stock',
+          details: 'Updated product: Oreo Original Chocolate Biscuits (Quantity 500 -> 750)',
+          module: 'Inventory Management'
+        },
+        {
+          id: 'log-2',
+          timestamp: '2026-08-02 14:30:11',
+          actorName: 'Oumarou Fofana',
+          actorRole: 'General Manager',
+          action: 'Created Sales Invoice',
+          details: 'Issued Invoice #INV-2026-001 to ABC Trading SARL ($11,300.00)',
+          module: 'Sales & Invoices'
+        },
+        {
+          id: 'log-3',
+          timestamp: '2026-08-03 09:12:45',
+          actorName: 'FOFANA OUMAROU (Super Admin)',
+          actorRole: 'Super Administrator',
+          action: 'Created User Account',
+          details: 'Created new user account for Ahmed Traoré (Sales Manager)',
+          module: 'User Management'
+        }
+      ];
+    } catch {
+      return [];
     }
-    return { valid: true };
+  }
+
+  public addAuditLog(actorName: string, actorRole: string, action: string, details: string, module: string = 'System') {
+    const logs = this.getAuditLogs();
+    const newLog: AuditLogEntry = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      actorName,
+      actorRole,
+      action,
+      details,
+      module
+    };
+    logs.unshift(newLog);
+    if (logs.length > 300) logs.pop();
+    localStorage.setItem('fof_ai_audit_logs', JSON.stringify(logs));
+    this.pushToCloudDatabase();
   }
 
   // --- Seasonal Events ---

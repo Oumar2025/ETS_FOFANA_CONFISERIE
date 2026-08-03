@@ -51,7 +51,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ userSession, curre
   const [simulatedQty, setSimulatedQty] = useState<number>(500);
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
 
-  const isAdmin = userSession.role === 'Administrator';
+  const isAdmin = userSession.role === 'Super Administrator' || userSession.role === 'General Manager' || userSession.role === 'Inventory Manager' || (userSession.role as string) === 'Administrator';
 
   // Form State
   const [formData, setFormData] = useState({

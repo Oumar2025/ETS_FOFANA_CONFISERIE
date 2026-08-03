@@ -108,6 +108,7 @@ export const App: React.FC = () => {
         setActiveModule={setActiveModule}
         alertCount={alertCount}
         currentLanguage={currentLanguage}
+        userRole={userSession.role}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
@@ -134,7 +135,7 @@ export const App: React.FC = () => {
           {activeModule === 'inventory' && <InventoryPage userSession={userSession} currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
           {activeModule === 'salesInvoice' && <SalesInvoicePage currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
           {activeModule === 'forecast' && <ForecastPage currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
-          {activeModule === 'assistant' && <AIAssistantPage />}
+          {activeModule === 'assistant' && <AIAssistantPage userRole={userSession.role} />}
           {activeModule === 'alerts' && <AlertCenterPage onAlertsUpdated={refreshAlertCount} />}
           {activeModule === 'reports' && <ExecutiveReportPage userSession={userSession} currentLanguage={currentLanguage} currentCurrency={currentCurrency} />}
           {activeModule === 'settings' && (

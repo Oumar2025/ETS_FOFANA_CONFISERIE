@@ -17,11 +17,15 @@ export type ProductStatus = 'In Stock' | 'Low Stock' | 'Critical Stock' | 'Appro
 export type ProductUnit = 'Cartons' | 'Boxes' | 'Pallets';
 
 export type UserRole = 
-  | 'Administrator' 
+  | 'Super Administrator' 
   | 'General Manager' 
   | 'Inventory Manager' 
   | 'Warehouse Manager' 
-  | 'Procurement Officer';
+  | 'Procurement Officer'
+  | 'Sales Manager'
+  | 'Finance Manager';
+
+export type UserStatus = 'Active' | 'Inactive' | 'Suspended' | 'Disabled';
 
 export type LanguageCode = 'en' | 'fr';
 
@@ -36,8 +40,14 @@ export interface UserAccount {
   role: UserRole;
   fullName: string;
   email: string;
+  phone?: string;
   avatarUrl?: string;
   createdAt: string;
+  status: UserStatus;
+  mustChangePassword?: boolean;
+  lastLogin?: string;
+  failedLoginAttempts?: number;
+  lockedUntil?: string;
 }
 
 export interface UserSession {
@@ -47,6 +57,18 @@ export interface UserSession {
   email: string;
   avatarUrl?: string;
   loginTime: string;
+  mustChangePassword?: boolean;
+  lastLogin?: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  details: string;
+  module?: string;
 }
 
 export interface Product {
