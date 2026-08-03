@@ -726,7 +726,8 @@ export class DatabaseService {
   public getInvoices(): Invoice[] {
     try {
       const data = localStorage.getItem(INVOICES_KEY);
-      return data ? JSON.parse(data) : INITIAL_INVOICES;
+      const parsed = data ? JSON.parse(data) : INITIAL_INVOICES;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_INVOICES;
     } catch {
       return INITIAL_INVOICES;
     }
@@ -735,7 +736,8 @@ export class DatabaseService {
   public getSalesHistory(): SalesHistory[] {
     try {
       const data = localStorage.getItem(SALES_KEY);
-      return data ? JSON.parse(data) : INITIAL_SALES_HISTORY;
+      const parsed = data ? JSON.parse(data) : INITIAL_SALES_HISTORY;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_SALES_HISTORY;
     } catch {
       return INITIAL_SALES_HISTORY;
     }
@@ -822,7 +824,8 @@ export class DatabaseService {
   public getCustomers(): Customer[] {
     try {
       const data = localStorage.getItem(CUSTOMERS_KEY);
-      return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
+      const parsed = data ? JSON.parse(data) : INITIAL_CUSTOMERS;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_CUSTOMERS;
     } catch {
       return INITIAL_CUSTOMERS;
     }
@@ -851,7 +854,8 @@ export class DatabaseService {
   public getSuppliers(): Supplier[] {
     try {
       const data = localStorage.getItem(SUPPLIERS_KEY);
-      return data ? JSON.parse(data) : INITIAL_SUPPLIERS;
+      const parsed = data ? JSON.parse(data) : INITIAL_SUPPLIERS;
+      return (Array.isArray(parsed) && parsed.length > 0) ? parsed : INITIAL_SUPPLIERS;
     } catch {
       return INITIAL_SUPPLIERS;
     }

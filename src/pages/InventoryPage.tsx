@@ -686,6 +686,9 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ userSession, curre
                   <option value="Warehouse A (Bamako Central)">Warehouse A (Bamako Central)</option>
                   <option value="Warehouse B (Kayes Depot)">Warehouse B (Kayes Depot)</option>
                   <option value="Warehouse C (Sikasso Hub)">Warehouse C (Sikasso Hub)</option>
+                  <option value="Warehouse D (Bobo Central)">Warehouse D (Bobo Central)</option>
+                  <option value="Warehouse E (Ango Depot)">Warehouse E (Ango Depot)</option>
+                  <option value="Warehouse F (Abidjan Hub)">Warehouse F (Abidjan Hub)</option>
                 </select>
               </div>
 

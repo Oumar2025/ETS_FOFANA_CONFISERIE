@@ -3,9 +3,9 @@ import {
   FileText, Plus, ShoppingCart, User, Calendar, DollarSign, Globe, CreditCard, 
   CheckCircle2, Printer, Mail, Trash2, Search, Award, TrendingUp, AlertTriangle, Building
 } from 'lucide-react';
-import { dbService } from '../services/DatabaseService';
+import { dbService, INITIAL_CUSTOMERS, INITIAL_PRODUCTS } from '../services/DatabaseService';
 import { Product, Customer, PaymentMethod, DestinationCountry, LanguageCode, CurrencyCode } from '../types';
-import { translations, formatPrice, formatCountryWithFlag } from '../i18n/translations';
+import { translations, formatPrice } from '../i18n/translations';
 import { CountryFlag } from '../components/CountryFlag';
 
 interface SalesInvoicePageProps {
@@ -24,11 +24,17 @@ interface DraftInvoiceItem {
 }
 
 export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLanguage, currentCurrency }) => {
-  const t = translations[currentLanguage];
+  const t = translations[currentLanguage] || translations.en;
   const [activeTab, setActiveTab] = useState<'create' | 'history' | 'crm'>('create');
 
+  // Load Database Records safely
+  const products = dbService.getProducts() || INITIAL_PRODUCTS;
+  const customers = dbService.getCustomers() || INITIAL_CUSTOMERS;
+  const invoices = dbService.getInvoices() || [];
+  const salesHistory = dbService.getSalesHistory() || [];
+
   // Form State
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(1);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(customers[0]?.customer_id || 1);
   const [invoiceDate, setInvoiceDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Bank Transfer');
   const [destinationCountry, setDestinationCountry] = useState<DestinationCountry>('Mali');
@@ -36,9 +42,9 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
   // Line Items State
   const [draftItems, setDraftItems] = useState<DraftInvoiceItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<number>(1);
+  const [selectedProductId, setSelectedProductId] = useState<number>(products[0]?.product_id || 1);
   const [qtyToSell, setQtyToSell] = useState<number>(50);
-  const [customUnitPrice, setCustomUnitPrice] = useState<number>(26.00);
+  const [customUnitPrice, setCustomUnitPrice] = useState<number>(products[0]?.selling_price || 26.00);
 
   // Search & Filter state
   const [salesSearch, setSalesSearch] = useState('');
@@ -54,21 +60,16 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
   const [custPhone, setCustPhone] = useState('');
   const [custCredit, setCustCredit] = useState<number>(25000);
 
-  const products = dbService.getProducts();
-  const customers = dbService.getCustomers();
-  const invoices = dbService.getInvoices();
-  const salesHistory = dbService.getSalesHistory();
-
-  const selectedProduct = products.find(p => p.product_id === selectedProductId) || products[0];
-  const selectedCustomer = customers.find(c => c.customer_id === selectedCustomerId) || customers[0];
+  const selectedProduct = products.find(p => p.product_id === selectedProductId) || products[0] || INITIAL_PRODUCTS[0];
+  const selectedCustomer = customers.find(c => c.customer_id === selectedCustomerId) || customers[0] || INITIAL_CUSTOMERS[0];
 
   const handleProductSelect = (id: number) => {
     setSelectedProductId(id);
     const p = products.find(prod => prod.product_id === id);
     if (p) {
-      setCustomUnitPrice(p.selling_price);
-      setQtyToSell(Math.min(50, p.quantity));
-      setDestinationCountry(p.destination_country);
+      setCustomUnitPrice(p.selling_price || 0);
+      setQtyToSell(Math.min(50, p.quantity || 1));
+      setDestinationCountry(p.destination_country || 'Mali');
     }
   };
 
@@ -114,7 +115,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
     setDraftItems(draftItems.filter((_, i) => i !== index));
   };
 
-  const subtotal = draftItems.reduce((acc, item) => acc + item.total_price, 0);
+  const subtotal = draftItems.reduce((acc, item) => acc + (item.total_price || 0), 0);
   const totalAmount = subtotal;
 
   const handleGenerateInvoice = () => {
@@ -126,8 +127,8 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
     const newInvoice = dbService.createInvoice({
       customer_id: selectedCustomer.customer_id,
       customer_name: selectedCustomer.company_name || selectedCustomer.name,
-      customer_email: selectedCustomer.email,
-      customer_phone: selectedCustomer.phone,
+      customer_email: selectedCustomer.email || '',
+      customer_phone: selectedCustomer.phone || '',
       destination_country: destinationCountry,
       invoice_date: invoiceDate,
       payment_method: paymentMethod,
@@ -178,16 +179,16 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
   };
 
   const filteredSales = salesHistory.filter(s => 
-    s.product_name.toLowerCase().includes(salesSearch.toLowerCase()) ||
-    s.customer_name.toLowerCase().includes(salesSearch.toLowerCase()) ||
-    s.invoice_number.toLowerCase().includes(salesSearch.toLowerCase()) ||
-    s.destination_country.toLowerCase().includes(salesSearch.toLowerCase())
+    (s.product_name || '').toLowerCase().includes(salesSearch.toLowerCase()) ||
+    (s.customer_name || '').toLowerCase().includes(salesSearch.toLowerCase()) ||
+    (s.invoice_number || '').toLowerCase().includes(salesSearch.toLowerCase()) ||
+    (s.destination_country || '').toLowerCase().includes(salesSearch.toLowerCase())
   );
 
   const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(crmSearch.toLowerCase()) ||
-    c.company_name.toLowerCase().includes(crmSearch.toLowerCase()) ||
-    c.country.toLowerCase().includes(crmSearch.toLowerCase())
+    (c.name || '').toLowerCase().includes(crmSearch.toLowerCase()) ||
+    (c.company_name || '').toLowerCase().includes(crmSearch.toLowerCase()) ||
+    (c.country || '').toLowerCase().includes(crmSearch.toLowerCase())
   );
 
   return (
@@ -266,7 +267,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   >
                     {customers.map(c => (
                       <option key={c.customer_id} value={c.customer_id}>
-                        {c.company_name} ({c.country})
+                        {c.company_name || c.name} ({c.country})
                       </option>
                     ))}
                   </select>
@@ -327,7 +328,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   <div className="flex justify-between items-center">
                     <label className="font-bold text-slate-300 uppercase block">{t.selectProduct}</label>
                     <span className="text-[11px] text-amber-400 font-bold">
-                      Available Stock: {selectedProduct.quantity} {selectedProduct.unit} ({selectedProduct.warehouse})
+                      Available Stock: {selectedProduct?.quantity || 0} {selectedProduct?.unit || 'Cartons'} ({selectedProduct?.warehouse || 'Warehouse A'})
                     </span>
                   </div>
                   <select
@@ -337,7 +338,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   >
                     {products.map(p => (
                       <option key={p.product_id} value={p.product_id}>
-                        {p.product_name} — {p.quantity} {p.unit} in stock (${p.selling_price.toFixed(2)}/{p.unit})
+                        {p.product_name} — {p.quantity} {p.unit} in stock (${p.selling_price?.toFixed(2)}/{p.unit})
                       </option>
                     ))}
                   </select>
@@ -349,7 +350,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                     <input
                       type="number"
                       min="1"
-                      max={selectedProduct.quantity}
+                      max={selectedProduct?.quantity || 9999}
                       value={qtyToSell}
                       onChange={(e) => setQtyToSell(Number(e.target.value))}
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold focus:border-amber-500 focus:outline-none"
@@ -405,7 +406,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 {/* Customer Details */}
                 <div className="py-3 border-b border-slate-800/80 text-xs space-y-1">
                   <p className="text-slate-400 text-[10px] uppercase font-bold">Billed To:</p>
-                  <p className="font-extrabold text-white">{selectedCustomer.company_name}</p>
+                  <p className="font-extrabold text-white">{selectedCustomer?.company_name || selectedCustomer?.name || 'Client'}</p>
                   <p className="text-slate-300 flex items-center space-x-1">
                     <CountryFlag countryName={destinationCountry} className="h-3 w-4 inline mr-1" />
                     <span>Market: {destinationCountry}</span>
@@ -477,7 +478,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                       <span>{t.printPdf}</span>
                     </button>
                     <button
-                      onClick={() => alert(`Invoice dispatch notification sent to ${selectedCustomer.email}`)}
+                      onClick={() => alert(`Invoice dispatch notification sent to ${selectedCustomer?.email || 'customer'}`)}
                       className="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700 flex items-center justify-center space-x-1.5 transition"
                     >
                       <Mail className="h-3.5 w-3.5" />
@@ -540,7 +541,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right font-extrabold text-emerald-400">
-                      {formatPrice(sale.total_revenue, currentCurrency)}
+                      {formatPrice(sale.total_revenue || 0, currentCurrency)}
                     </td>
                   </tr>
                 ))}
@@ -576,7 +577,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               <div key={cust.customer_id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-md hover:border-amber-500/40 transition">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-slate-100 text-sm">{cust.company_name}</h3>
+                    <h3 className="font-bold text-slate-100 text-sm">{cust.company_name || cust.name}</h3>
                     <p className="text-xs text-slate-400">{cust.name}</p>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
@@ -596,15 +597,15 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Total Orders:</span>
-                    <span className="font-bold text-amber-400">{cust.total_orders} Orders</span>
+                    <span className="font-bold text-amber-400">{cust.total_orders || 0} Orders</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Lifetime Revenue:</span>
-                    <span className="font-bold text-emerald-400">{formatPrice(cust.total_spent, currentCurrency)}</span>
+                    <span className="font-bold text-emerald-400">{formatPrice(cust.total_spent || 0, currentCurrency)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Credit Limit:</span>
-                    <span className="font-mono text-slate-300">{formatPrice(cust.credit_limit, currentCurrency)}</span>
+                    <span className="font-mono text-slate-300">{formatPrice(cust.credit_limit || 0, currentCurrency)}</span>
                   </div>
                 </div>
               </div>
