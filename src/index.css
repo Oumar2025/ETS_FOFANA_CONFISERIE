@@ -62,13 +62,20 @@
 
 /* Dedicated Print Styles for Real PDF Invoice Output */
 @media print {
-  body {
+  body, html {
     background: #ffffff !important;
     color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
   }
 
-  header, aside, nav, .print-hide, button {
+  header, aside, nav, .print-hide, button, .backdrop-blur-md, .backdrop-blur-sm, [class*="bg-slate-950/"] {
     display: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
   }
 
   main {
@@ -79,15 +86,18 @@
 
   .printable-invoice-document {
     display: block !important;
-    position: absolute !important;
+    position: fixed !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    background: #ffffff !important;
-    color: #000000 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     padding: 24px !important;
+    color: #000000 !important;
+    background: #ffffff !important;
     box-shadow: none !important;
     border: none !important;
+    z-index: 99999 !important;
   }
 
   * {

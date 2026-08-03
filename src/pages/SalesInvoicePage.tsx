@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   FileText, Plus, ShoppingCart, User, Calendar, DollarSign, Globe, CreditCard, 
-  CheckCircle2, Printer, Mail, Trash2, Edit, Search, Award, TrendingUp, AlertTriangle, Building, X, Eye
+  CheckCircle2, Printer, Mail, Trash2, Edit, Search, Award, TrendingUp, AlertTriangle, Building, X, Eye, Download
 } from 'lucide-react';
 import { dbService, INITIAL_CUSTOMERS, INITIAL_PRODUCTS } from '../services/DatabaseService';
 import { notificationService } from '../services/NotificationService';
@@ -27,6 +27,7 @@ interface DraftInvoiceItem {
 
 export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLanguage, currentCurrency }) => {
   const t = translations[currentLanguage] || translations.en;
+  const isFr = currentLanguage === 'fr';
   const [activeTab, setActiveTab] = useState<'create' | 'history' | 'crm'>('create');
 
   // Load Database Records safely
@@ -86,12 +87,12 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
     if (!selectedProduct) return;
 
     if (qtyToSell <= 0) {
-      alert('Quantity must be greater than 0');
+      alert(isFr ? 'La quantité doit être supérieure à 0' : 'Quantity must be greater than 0');
       return;
     }
 
     if (qtyToSell > selectedProduct.quantity) {
-      alert(`Warning: Quantity exceeds current warehouse stock (${selectedProduct.quantity} ${selectedProduct.unit} available).`);
+      alert(isFr ? `Attention: La quantité dépasse le stock disponible (${selectedProduct.quantity} ${selectedProduct.unit}).` : `Warning: Quantity exceeds current warehouse stock (${selectedProduct.quantity} ${selectedProduct.unit} available).`);
       return;
     }
 
@@ -128,7 +129,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
   const handleGenerateInvoice = () => {
     if (draftItems.length === 0) {
-      alert('Please add at least one product item to the invoice.');
+      alert(isFr ? 'Veuillez ajouter au moins un produit à la facture.' : 'Please add at least one product item to the invoice.');
       return;
     }
 
@@ -154,7 +155,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
       notes: notes
     });
 
-    setSuccessMessage(`Invoice ${newInvoice.invoice_number} generated successfully! Stock automatically deducted.`);
+    setSuccessMessage(isFr ? `Facture ${newInvoice.invoice_number} générée avec succès ! Stock déduit automatiquement.` : `Invoice ${newInvoice.invoice_number} generated successfully! Stock automatically deducted.`);
     setDraftItems([]);
     setNotes('');
 
@@ -166,21 +167,37 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
     }, 5000);
   };
 
+  const handleDownloadPdf = (invoice: Invoice) => {
+    const element = document.getElementById('printable-invoice-document');
+    if (element && (window as any).html2pdf) {
+      const opt = {
+        margin: [0.3, 0.3, 0.3, 0.3],
+        filename: `ETS_FOFANA_Invoice_${invoice.invoice_number}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      (window as any).html2pdf().set(opt).from(element).save();
+    } else {
+      window.print();
+    }
+  };
+
   const handleSendEmail = async (invoice: Invoice) => {
-    setEmailStatusMessage(`Dispatching invoice email to ${invoice.customer_email || 'client'}...`);
+    setEmailStatusMessage(isFr ? `Envoi de la facture par email à ${invoice.customer_email || 'client'}...` : `Dispatching invoice email to ${invoice.customer_email || 'client'}...`);
     const res = await notificationService.sendInvoiceEmail(invoice);
     if (res.success) {
-      setEmailStatusMessage(`Invoice ${invoice.invoice_number} emailed successfully!`);
+      setEmailStatusMessage(isFr ? `Facture ${invoice.invoice_number} envoyée par email avec succès !` : `Invoice ${invoice.invoice_number} emailed successfully!`);
     } else {
-      setEmailStatusMessage(`Email sent notification to ${invoice.customer_email || 'f.oumarou78@gmail.com'}`);
+      setEmailStatusMessage(isFr ? `Notification d'envoi d'email transmise à ${invoice.customer_email || 'f.oumarou78@gmail.com'}` : `Email sent notification to ${invoice.customer_email || 'f.oumarou78@gmail.com'}`);
     }
     setTimeout(() => setEmailStatusMessage(null), 4000);
   };
 
   const handleDeleteInvoice = (id: number, invNum: string) => {
-    if (window.confirm(`Are you sure you want to delete invoice ${invNum}?`)) {
+    if (window.confirm(isFr ? `Êtes-vous sûr de vouloir supprimer la facture ${invNum} ?` : `Are you sure you want to delete invoice ${invNum}?`)) {
       dbService.deleteInvoice(id);
-      setSuccessMessage(`Invoice ${invNum} deleted successfully.`);
+      setSuccessMessage(isFr ? `Facture ${invNum} supprimée.` : `Invoice ${invNum} deleted successfully.`);
       if (previewInvoice?.invoice_id === id) setPreviewInvoice(null);
       setTimeout(() => setSuccessMessage(null), 3000);
     }
@@ -224,7 +241,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
         credit_limit: custCredit,
         status: custStatus
       });
-      setSuccessMessage(`Customer "${custCompany}" updated successfully.`);
+      setSuccessMessage(isFr ? `Client "${custCompany}" mis à jour avec succès.` : `Customer "${custCompany}" updated successfully.`);
     } else {
       dbService.addCustomer({
         name: custName,
@@ -235,7 +252,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
         credit_limit: custCredit,
         status: custStatus
       });
-      setSuccessMessage(`New customer "${custCompany}" registered successfully.`);
+      setSuccessMessage(isFr ? `Nouveau client "${custCompany}" enregistré avec succès.` : `New customer "${custCompany}" registered successfully.`);
     }
 
     setShowCustomerModal(false);
@@ -243,9 +260,9 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
   };
 
   const handleDeleteCustomer = (id: number, name: string) => {
-    if (window.confirm(`Delete customer "${name}"?`)) {
+    if (window.confirm(isFr ? `Supprimer le client "${name}" ?` : `Delete customer "${name}"?`)) {
       dbService.deleteCustomer(id);
-      setSuccessMessage(`Customer "${name}" deleted.`);
+      setSuccessMessage(isFr ? `Client "${name}" supprimé.` : `Customer "${name}" deleted.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     }
   };
@@ -295,7 +312,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             }`}
           >
             <ShoppingCart className="h-4 w-4" />
-            <span>Invoices Ledger ({invoices.length})</span>
+            <span>{isFr ? 'Registre des Factures' : 'Invoices Ledger'} ({invoices.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('crm')}
@@ -332,7 +349,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <Building className="h-4 w-4 text-amber-400" />
-                <span>1. Invoice & Customer Header</span>
+                <span>{isFr ? '1. En-tête de Facture & Client' : '1. Invoice & Customer Header'}</span>
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -361,7 +378,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
                 {/* Destination Country */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-300 uppercase block">Destination Market</label>
+                  <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Marché de Destination' : 'Destination Market'}</label>
                   <select
                     value={destinationCountry}
                     onChange={(e) => setDestinationCountry(e.target.value as DestinationCountry)}
@@ -382,10 +399,10 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold focus:border-amber-500 focus:outline-none"
                   >
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Check">Check</option>
-                    <option value="Credit / Account">Credit / Account</option>
+                    <option value="Bank Transfer">{isFr ? 'Virement Bancaire' : 'Bank Transfer'}</option>
+                    <option value="Cash">{isFr ? 'Comptant / Espèces' : 'Cash'}</option>
+                    <option value="Check">{isFr ? 'Chèque' : 'Check'}</option>
+                    <option value="Credit / Account">{isFr ? 'Crédit / Compte' : 'Credit / Account'}</option>
                   </select>
                 </div>
               </div>
@@ -395,7 +412,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <ShoppingCart className="h-4 w-4 text-amber-400" />
-                <span>2. Add Products to Invoice</span>
+                <span>{isFr ? '2. Ajouter des Produits à la Facture' : '2. Add Products to Invoice'}</span>
               </h2>
 
               <form onSubmit={handleAddItem} className="space-y-4 text-xs">
@@ -403,7 +420,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   <div className="flex justify-between items-center">
                     <label className="font-bold text-slate-300 uppercase block">{t.selectProduct}</label>
                     <span className="text-[11px] text-amber-400 font-bold">
-                      Available Stock: {selectedProduct?.quantity || 0} {selectedProduct?.unit || 'Cartons'} ({selectedProduct?.warehouse || 'Warehouse A'})
+                      {isFr ? 'Stock Disponible :' : 'Available Stock:'} {selectedProduct?.quantity || 0} {selectedProduct?.unit || 'Cartons'} ({selectedProduct?.warehouse || 'Entrepôt A'})
                     </span>
                   </div>
                   <select
@@ -413,7 +430,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   >
                     {products.map(p => (
                       <option key={p.product_id} value={p.product_id}>
-                        {p.product_name} — {p.quantity} {p.unit} in stock (${p.selling_price?.toFixed(2)}/{p.unit})
+                        {p.product_name} — {p.quantity} {p.unit} ({formatPrice(p.selling_price || 0, currentCurrency)}/{p.unit})
                       </option>
                     ))}
                   </select>
@@ -467,7 +484,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                         ETS FOFANA CONFISERIE
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official Sales Invoice & Dispatch Note</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{isFr ? 'Facture Officielle de Vente' : 'Official Sales Invoice & Dispatch Note'}</p>
                   </div>
                   <div className="text-right">
                     <span className="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 font-mono text-xs font-bold border border-amber-500/30">
@@ -479,22 +496,22 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
                 {/* Customer Details */}
                 <div className="py-3 border-b border-slate-800/80 text-xs space-y-1">
-                  <p className="text-slate-400 text-[10px] uppercase font-bold">Billed To:</p>
+                  <p className="text-slate-400 text-[10px] uppercase font-bold">{isFr ? 'Facturé à :' : 'Billed To:'}</p>
                   <p className="font-extrabold text-white">{selectedCustomer?.company_name || selectedCustomer?.name || 'Client'}</p>
                   <p className="text-slate-300 flex items-center space-x-1">
                     <CountryFlag countryName={destinationCountry} className="h-3 w-4 inline mr-1" />
-                    <span>Market: {destinationCountry}</span>
+                    <span>{isFr ? 'Marché :' : 'Market:'} {destinationCountry}</span>
                   </p>
-                  <p className="text-slate-400 text-[11px]">Payment: <strong className="text-amber-400">{paymentMethod}</strong></p>
+                  <p className="text-slate-400 text-[11px]">{isFr ? 'Paiement :' : 'Payment:'} <strong className="text-amber-400">{paymentMethod}</strong></p>
                 </div>
 
                 {/* Invoice Items Table */}
                 <div className="py-4 space-y-3">
-                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Line Items ({draftItems.length})</h3>
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">{isFr ? 'Articles Facturés' : 'Line Items'} ({draftItems.length})</h3>
                   
                   {draftItems.length === 0 ? (
                     <div className="p-8 text-center border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
-                      No products added to invoice draft yet. Select a product and click <strong>Add Item</strong>.
+                      {isFr ? 'Aucun produit ajouté à la facture. Sélectionnez un produit et cliquez sur Ajouter.' : 'No products added to invoice draft yet. Select a product and click Add Item.'}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -525,7 +542,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               {/* Subtotal & Action Buttons */}
               <div className="border-t border-slate-800 pt-4 space-y-4">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="font-bold text-slate-300 uppercase">Total Amount:</span>
+                  <span className="font-bold text-slate-300 uppercase">{isFr ? 'Montant Total :' : 'Total Amount:'}</span>
                   <span className="text-xl font-black text-amber-400">{formatPrice(totalAmount, currentCurrency)}</span>
                 </div>
 
@@ -554,9 +571,9 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             <div>
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <FileText className="h-4 w-4 text-amber-400" />
-                <span>Official Issued Invoices Directory ({invoices.length})</span>
+                <span>{isFr ? 'Registre Officiel des Factures Émises' : 'Official Issued Invoices Directory'} ({invoices.length})</span>
               </h2>
-              <p className="text-xs text-slate-400">View, print PDF document, dispatch email, or delete registered invoices</p>
+              <p className="text-xs text-slate-400">{isFr ? 'Affichez, téléchargez en PDF, envoyez par email ou supprimez les factures' : 'View, download PDF document, dispatch email, or delete registered invoices'}</p>
             </div>
 
             <div className="relative w-full sm:w-72">
@@ -565,7 +582,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 type="text"
                 value={salesSearch}
                 onChange={(e) => setSalesSearch(e.target.value)}
-                placeholder="Search invoice #, client, country..."
+                placeholder={isFr ? 'Rechercher facture #, client, pays...' : 'Search invoice #, client, country...'}
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -575,12 +592,12 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 uppercase font-bold text-[10px]">
-                  <th className="py-3 px-4">Invoice #</th>
+                  <th className="py-3 px-4">{t.invoiceNumber}</th>
                   <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Customer Name</th>
-                  <th className="py-3 px-4">Market</th>
-                  <th className="py-3 px-4">Payment Method</th>
-                  <th className="py-3 px-4">Total Amount</th>
+                  <th className="py-3 px-4">{t.customerName}</th>
+                  <th className="py-3 px-4">{isFr ? 'Marché' : 'Market'}</th>
+                  <th className="py-3 px-4">{t.paymentMethod}</th>
+                  <th className="py-3 px-4">{isFr ? 'Montant Total' : 'Total Amount'}</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -612,17 +629,17 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                           <button
                             onClick={() => setPreviewInvoice(inv)}
                             className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-bold text-[11px] border border-amber-500/30 flex items-center space-x-1"
-                            title="View & Print PDF Invoice Document"
+                            title={isFr ? 'Voir & Télécharger le Document PDF' : 'View & Download PDF Invoice Document'}
                           >
                             <Printer className="h-3.5 w-3.5" />
-                            <span>PDF / Print</span>
+                            <span>{isFr ? 'Aperçu / PDF' : 'PDF / Print'}</span>
                           </button>
 
                           {/* Email Invoice */}
                           <button
                             onClick={() => handleSendEmail(inv)}
                             className="p-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-blue-400 border border-slate-800"
-                            title="Send Invoice to Client Email"
+                            title={isFr ? 'Envoyer au Client par Email' : 'Send Invoice to Client Email'}
                           >
                             <Mail className="h-3.5 w-3.5" />
                           </button>
@@ -631,7 +648,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                           <button
                             onClick={() => handleDeleteInvoice(inv.invoice_id, inv.invoice_number)}
                             className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-red-400 border border-slate-800"
-                            title="Delete Invoice"
+                            title={isFr ? 'Supprimer la Facture' : 'Delete Invoice'}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -652,9 +669,9 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             <div>
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <User className="h-4 w-4 text-amber-400" />
-                <span>Customer CRM Directory ({customers.length})</span>
+                <span>{t.customerCrmTab} ({customers.length})</span>
               </h2>
-              <p className="text-xs text-slate-400">Track client order volume, lifetime spending, credit limits & edit profiles</p>
+              <p className="text-xs text-slate-400">{isFr ? 'Suivez le volume des commandes clients, le chiffre d\'affaires et gérez les profils' : 'Track client order volume, lifetime spending, credit limits & edit profiles'}</p>
             </div>
 
             <button
@@ -662,7 +679,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center space-x-1.5 shadow-gold-glow transition"
             >
               <Plus className="h-4 w-4" />
-              <span>Add Customer</span>
+              <span>{isFr ? 'Ajouter un Client' : 'Add Customer'}</span>
             </button>
           </div>
 
@@ -684,7 +701,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
                   <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Country:</span>
+                      <span className="text-slate-400">{isFr ? 'Pays :' : 'Country:'}</span>
                       <span className="font-semibold flex items-center space-x-1">
                         <CountryFlag countryName={cust.country} className="h-3 w-4 inline mr-1" />
                         <span>{cust.country}</span>
@@ -695,15 +712,15 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                       <span className="font-mono text-slate-300 text-[11px]">{cust.email}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Total Orders:</span>
-                      <span className="font-bold text-amber-400">{cust.total_orders || 0} Orders</span>
+                      <span className="text-slate-400">{isFr ? 'Commandes Totales :' : 'Total Orders:'}</span>
+                      <span className="font-bold text-amber-400">{cust.total_orders || 0} {isFr ? 'Commandes' : 'Orders'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Lifetime Revenue:</span>
+                      <span className="text-slate-400">{isFr ? 'Chiffre d\'Affaires :' : 'Lifetime Revenue:'}</span>
                       <span className="font-bold text-emerald-400">{formatPrice(cust.total_spent || 0, currentCurrency)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Credit Limit:</span>
+                      <span className="text-slate-400">{isFr ? 'Limite de Crédit :' : 'Credit Limit:'}</span>
                       <span className="font-mono text-slate-300">{formatPrice(cust.credit_limit || 0, currentCurrency)}</span>
                     </div>
                   </div>
@@ -716,14 +733,14 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                     className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-bold flex items-center space-x-1 transition"
                   >
                     <Edit className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Edit</span>
+                    <span>{isFr ? 'Modifier' : 'Edit'}</span>
                   </button>
                   <button
                     onClick={() => handleDeleteCustomer(cust.customer_id, cust.company_name)}
                     className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-xs font-bold flex items-center space-x-1 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
+                    <span>{isFr ? 'Supprimer' : 'Delete'}</span>
                   </button>
                 </div>
               </div>
@@ -734,32 +751,42 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
       {/* DEDICATED OFFICIAL INVOICE PDF PRINT MODAL */}
       {previewInvoice && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-[999] overflow-y-auto print-hide">
           <div className="bg-slate-900 border border-slate-800 max-w-3xl w-full rounded-2xl p-6 space-y-6 shadow-2xl relative">
             {/* Modal Controls Header */}
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4 print-hide">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 border-b border-slate-800 pb-4">
               <div className="flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-amber-400" />
                 <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
-                  Official Invoice PDF Document Preview ({previewInvoice.invoice_number})
+                  {isFr ? 'Aperçu du Document PDF Facture' : 'Official Invoice PDF Document Preview'} ({previewInvoice.invoice_number})
                 </h3>
               </div>
 
               <div className="flex items-center space-x-2">
+                {/* DIRECT REAL PDF FILE DOWNLOAD BUTTON */}
+                <button
+                  onClick={() => handleDownloadPdf(previewInvoice)}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-gold-glow flex items-center space-x-1.5 transition"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>{isFr ? 'Télécharger Fichier PDF' : 'Download PDF Document'}</span>
+                </button>
+
                 <button
                   onClick={() => handleSendEmail(previewInvoice)}
                   className="px-3.5 py-1.5 rounded-xl bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs font-bold border border-blue-500/30 flex items-center space-x-1.5"
                 >
                   <Mail className="h-4 w-4" />
-                  <span>Email Client</span>
+                  <span>{isFr ? 'Email Client' : 'Email Client'}</span>
                 </button>
 
                 <button
                   onClick={() => window.print()}
-                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-slate-950 text-xs font-extrabold shadow-gold-glow flex items-center space-x-1.5"
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center space-x-1.5"
+                  title="Print Document"
                 >
                   <Printer className="h-4 w-4" />
-                  <span>Print / Save PDF</span>
+                  <span>{isFr ? 'Imprimer' : 'Print'}</span>
                 </button>
 
                 <button
@@ -772,7 +799,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             </div>
 
             {/* REAL PRINTABLE OFFICIAL INVOICE LAYOUT */}
-            <div className="printable-invoice-document bg-white text-slate-900 p-8 rounded-xl space-y-6 border border-slate-200">
+            <div id="printable-invoice-document" className="printable-invoice-document bg-white text-slate-900 p-8 rounded-xl space-y-6 border border-slate-200">
               {/* Invoice Header */}
               <div className="flex justify-between items-start border-b-2 border-amber-500 pb-6">
                 <div>
@@ -780,7 +807,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                     <img src="/ets_fofana_logo.jpg" alt="Logo" className="h-12 w-12 rounded-xl object-cover" />
                     <div>
                       <h1 className="text-xl font-black text-slate-900 tracking-tight">ETS FOFANA CONFISERIE</h1>
-                      <p className="text-xs text-slate-600 font-semibold">Import & Distribution Confectionery Mali</p>
+                      <p className="text-xs text-slate-600 font-semibold">{isFr ? 'Importation & Distribution Confiserie Mali' : 'Import & Distribution Confectionery Mali'}</p>
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-2">
@@ -790,7 +817,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
                 <div className="text-right">
                   <span className="px-3 py-1 bg-amber-500 text-slate-950 font-mono font-black text-sm rounded uppercase">
-                    INVOICE
+                    {isFr ? 'FACTURE' : 'INVOICE'}
                   </span>
                   <p className="text-sm font-black text-slate-900 mt-2 font-mono">{previewInvoice.invoice_number}</p>
                   <p className="text-xs text-slate-600 font-semibold">Date: {previewInvoice.invoice_date}</p>
@@ -800,17 +827,17 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               {/* Bill To & Dispatch Details */}
               <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200">
                 <div>
-                  <p className="text-slate-500 font-extrabold uppercase text-[10px]">BILLED TO CUSTOMER:</p>
+                  <p className="text-slate-500 font-extrabold uppercase text-[10px]">{isFr ? 'FACTURE À :' : 'BILLED TO CUSTOMER:'}</p>
                   <p className="font-extrabold text-slate-900 text-sm mt-0.5">{previewInvoice.customer_name}</p>
                   <p className="text-slate-600">{previewInvoice.customer_email || 'client@domain.com'}</p>
                   <p className="text-slate-600">{previewInvoice.customer_phone || '+223 70 00 00 00'}</p>
                 </div>
 
                 <div className="text-right space-y-1">
-                  <p className="text-slate-500 font-extrabold uppercase text-[10px]">DESTINATION & PAYMENT:</p>
-                  <p className="font-bold text-slate-900">Destination Market: {previewInvoice.destination_country}</p>
-                  <p className="text-slate-700">Payment Terms: <strong className="text-amber-700">{previewInvoice.payment_method}</strong></p>
-                  <p className="text-slate-700">Status: <strong className="text-emerald-600">{previewInvoice.status}</strong></p>
+                  <p className="text-slate-500 font-extrabold uppercase text-[10px]">{isFr ? 'DESTINATION & PAIEMENT :' : 'DESTINATION & PAYMENT:'}</p>
+                  <p className="font-bold text-slate-900">{isFr ? 'Marché Destination :' : 'Destination Market:'} {previewInvoice.destination_country}</p>
+                  <p className="text-slate-700">{isFr ? 'Mode de Paiement :' : 'Payment Terms:'} <strong className="text-amber-700">{previewInvoice.payment_method}</strong></p>
+                  <p className="text-slate-700">{isFr ? 'Statut :' : 'Status:'} <strong className="text-emerald-600">{previewInvoice.status}</strong></p>
                 </div>
               </div>
 
@@ -818,9 +845,9 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-900 text-white uppercase text-[10px] font-bold">
-                    <th className="py-2.5 px-3">Item Description</th>
-                    <th className="py-2.5 px-3 text-center">Quantity</th>
-                    <th className="py-2.5 px-3 text-right">Unit Price</th>
+                    <th className="py-2.5 px-3">{isFr ? 'Désignation Produit' : 'Item Description'}</th>
+                    <th className="py-2.5 px-3 text-center">{isFr ? 'Quantité' : 'Quantity'}</th>
+                    <th className="py-2.5 px-3 text-right">{isFr ? 'Prix Unitaire' : 'Unit Price'}</th>
                     <th className="py-2.5 px-3 text-right">Total</th>
                   </tr>
                 </thead>
@@ -838,20 +865,20 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
               {/* Subtotal Summary */}
               <div className="flex justify-between items-center border-t-2 border-slate-900 pt-4 text-sm font-bold">
-                <span className="text-slate-700">TOTAL AMOUNT DUE:</span>
+                <span className="text-slate-700">{isFr ? 'MONTANT TOTAL DÛ :' : 'TOTAL AMOUNT DUE:'}</span>
                 <span className="text-2xl font-black text-slate-900 font-mono">${previewInvoice.total_amount.toFixed(2)}</span>
               </div>
 
               {/* Official Stamp & Signature Block */}
               <div className="pt-8 border-t border-slate-200 flex justify-between items-end text-xs">
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Notes & Terms:</p>
-                  <p className="text-slate-600 italic text-[11px]">{previewInvoice.notes || 'Official dispatch document issued by ETS FOFANA CONFISERIE.'}</p>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">{isFr ? 'Notes & Conditions :' : 'Notes & Terms:'}</p>
+                  <p className="text-slate-600 italic text-[11px]">{previewInvoice.notes || (isFr ? 'Document officiel d\'expédition délivré par ETS FOFANA CONFISERIE.' : 'Official dispatch document issued by ETS FOFANA CONFISERIE.')}</p>
                 </div>
 
                 <div className="text-center border-t border-slate-400 pt-2 w-48">
-                  <p className="font-extrabold text-slate-900">Authorized Manager</p>
-                  <p className="text-[10px] text-slate-500">Signature & Official Stamp</p>
+                  <p className="font-extrabold text-slate-900">{isFr ? 'Gestionnaire Autorisé' : 'Authorized Manager'}</p>
+                  <p className="text-[10px] text-slate-500">{isFr ? 'Signature et Cachet Officiel' : 'Signature & Official Stamp'}</p>
                 </div>
               </div>
             </div>
@@ -865,12 +892,12 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
           <div className="glass-panel rounded-2xl p-6 border border-slate-800 max-w-md w-full space-y-4 shadow-2xl">
             <h3 className="text-base font-extrabold text-white tracking-tight flex items-center space-x-2">
               <User className="h-5 w-5 text-amber-400" />
-              <span>{editingCustomer ? 'Edit Customer Profile' : 'Register New Client / Customer'}</span>
+              <span>{editingCustomer ? (isFr ? 'Modifier le Profil Client' : 'Edit Customer Profile') : (isFr ? 'Enregistrer un Nouveau Client' : 'Register New Client / Customer')}</span>
             </h3>
 
             <form onSubmit={handleSaveCustomer} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-300 uppercase block">Company Name</label>
+                <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Nom de la Société' : 'Company Name'}</label>
                 <input
                   type="text"
                   required
@@ -882,7 +909,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-300 uppercase block">Contact Person Name</label>
+                <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Personne de Contact' : 'Contact Person Name'}</label>
                 <input
                   type="text"
                   required
@@ -895,7 +922,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-300 uppercase block">Country</label>
+                  <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Pays' : 'Country'}</label>
                   <select
                     value={custCountry}
                     onChange={(e) => setCustCountry(e.target.value as DestinationCountry)}
@@ -909,10 +936,10 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-300 uppercase block">Status</label>
+                  <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Statut' : 'Status'}</label>
                   <select
                     value={custStatus}
-                    onChange={(e) => setCustStatus(e.target.value as 'Active' | 'VIP')}
+                    onChange={(e) => setCustStatus(e.target.value as Customer['status'])}
                     className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold"
                   >
                     <option value="Active">Active</option>
@@ -934,7 +961,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-300 uppercase block">Phone</label>
+                  <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Téléphone' : 'Phone'}</label>
                   <input
                     type="text"
                     value={custPhone}
@@ -946,7 +973,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-300 uppercase block">Credit Limit ($)</label>
+                <label className="font-bold text-slate-300 uppercase block">{isFr ? 'Limite de Crédit ($)' : 'Credit Limit ($)'}</label>
                 <input
                   type="number"
                   value={custCredit}
@@ -961,13 +988,13 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   onClick={() => setShowCustomerModal(false)}
                   className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-gold-glow"
                 >
-                  {editingCustomer ? 'Update Customer' : 'Save Customer'}
+                  {editingCustomer ? (isFr ? 'Mettre à jour' : 'Update Customer') : (isFr ? 'Enregistrer Client' : 'Save Customer')}
                 </button>
               </div>
             </form>
