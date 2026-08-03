@@ -33,7 +33,7 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveModule, setActiveTa
     else if (setActiveTab) setActiveTab(id);
   };
 
-  const supplierCountries = ['Turkey', 'Morocco', 'Tunisia', 'Brazil'];
+  const supplierCountries = ['Turkey', 'Morocco', 'Tunisia', 'Brazil', 'China', 'Thailand', 'Belgium'];
   const destinationCountries = ['Mali', 'Burkina Faso', "Côte d'Ivoire", 'Angola'];
 
   const modules = [

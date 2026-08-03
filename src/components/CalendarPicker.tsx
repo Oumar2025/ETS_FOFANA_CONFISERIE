@@ -87,7 +87,7 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ value, onChange,
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 z-[100] w-72 bg-slate-950/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-4 shadow-[0_20px_60px_rgba(0,0,0,0.9)] space-y-4 text-slate-200 font-sans">
+        <div className="absolute left-0 top-full mt-1.5 z-[99999] w-72 bg-slate-950/98 backdrop-blur-2xl border border-slate-700 rounded-2xl p-4 shadow-[0_25px_80px_rgba(0,0,0,0.95)] space-y-4 text-slate-200 font-sans">
           {/* Header Controls */}
           <div className="flex items-center justify-between text-xs font-bold">
             <button

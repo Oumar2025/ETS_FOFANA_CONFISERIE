@@ -1,6 +1,6 @@
 export type ProductCategory = 'Biscuits' | 'Chocolates' | 'Candy' | 'Dates' | 'Packaged Confectionery';
 
-export type SupplierCountry = 'Turkey' | 'Morocco' | 'Tunisia' | 'Brazil';
+export type SupplierCountry = 'Turkey' | 'Morocco' | 'Tunisia' | 'Brazil' | 'China' | 'Thailand' | 'Belgium';
 
 export type DestinationCountry = 'Mali' | 'Burkina Faso' | "Côte d'Ivoire" | 'Angola';
 

@@ -346,7 +346,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
           {/* Left Panel: Invoice Details & Product Selection */}
           <div className="lg:col-span-7 space-y-6">
             {/* Header Info Card */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
+            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl relative z-30">
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <Building className="h-4 w-4 text-amber-400" />
                 <span>{isFr ? '1. En-tête de Facture & Client' : '1. Invoice & Customer Header'}</span>
@@ -409,7 +409,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
             </div>
 
             {/* Line Item Picker Form */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
+            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl relative z-10">
               <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
                 <ShoppingCart className="h-4 w-4 text-amber-400" />
                 <span>{isFr ? '2. Ajouter des Produits à la Facture' : '2. Add Products to Invoice'}</span>

@@ -216,6 +216,9 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ userSession, curre
             <option value="Morocco">Morocco</option>
             <option value="Tunisia">Tunisia</option>
             <option value="Brazil">Brazil</option>
+            <option value="China">China</option>
+            <option value="Thailand">Thailand</option>
+            <option value="Belgium">Belgium (Belgika)</option>
           </select>
 
           <select
@@ -592,6 +595,9 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ userSession, curre
                     <option value="Morocco">Morocco</option>
                     <option value="Tunisia">Tunisia</option>
                     <option value="Brazil">Brazil</option>
+                    <option value="China">China</option>
+                    <option value="Thailand">Thailand</option>
+                    <option value="Belgium">Belgium (Belgika)</option>
                   </select>
                 </div>
 

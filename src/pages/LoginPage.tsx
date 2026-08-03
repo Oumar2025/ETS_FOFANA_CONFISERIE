@@ -217,18 +217,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center space-x-2 transition disabled:opacity-50"
             >
               <span>{isLoading ? 'Verifying Credentials...' : 'Sign In to Portal'}</span>
-              <ArrowRight className="h-4 w-4" />
             </button>
-
-            {/* Super Admin Quick Credentials Reference Box */}
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-[11px]">
-              <div className="flex justify-between items-center text-amber-400 font-extrabold">
-                <span>🔑 Super Administrator Credentials:</span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px]">RBAC Enabled</span>
-              </div>
-              <p className="text-slate-300 font-mono">Username: <strong className="text-white">admin</strong></p>
-              <p className="text-slate-300 font-mono">Password: <strong className="text-white">Fofana@2026!</strong></p>
-            </div>
           </form>
         )}
 
