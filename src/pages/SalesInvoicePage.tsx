@@ -430,7 +430,7 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                   >
                     {products.map(p => (
                       <option key={p.product_id} value={p.product_id}>
-                        {p.product_name} — {p.quantity} {p.unit} ({formatPrice(p.selling_price || 0, currentCurrency)}/{p.unit})
+                        {p.product_name} — {p.quantity} {p.unit} {isFr ? 'restants en stock' : 'remaining in stock'} ({p.warehouse || 'Entrepôt A'}) — {formatPrice(p.selling_price || 0, currentCurrency)}/{p.unit}
                       </option>
                     ))}
                   </select>
@@ -521,6 +521,9 @@ export const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({ currentLangu
                             <p className="font-bold text-slate-100">{item.product_name}</p>
                             <p className="text-[11px] text-slate-400">
                               {item.quantity} {item.unit} &times; ${item.unit_price.toFixed(2)}
+                            </p>
+                            <p className="text-[10px] text-emerald-400 font-bold mt-0.5">
+                              {isFr ? 'Stock restant après vente :' : 'Stock Remaining After Sale:'} {Math.max(0, item.max_stock - item.quantity)} {item.unit}
                             </p>
                           </div>
                           <div className="text-right flex items-center space-x-3">

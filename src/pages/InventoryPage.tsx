@@ -278,8 +278,9 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ userSession, curre
                             <span>{p.destination_country}</span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-200">
-                          {p.quantity} <span className="text-[10px] font-normal text-amber-400 uppercase">{p.unit}</span>
+                        <td className="py-3.5 px-4 font-bold">
+                          <div className="font-extrabold text-amber-400 font-mono text-xs">{p.quantity} <span className="text-[10px] font-normal text-slate-300 uppercase">{p.unit} remaining</span></div>
+                          <div className="text-[10px] text-slate-500">{p.warehouse || 'Warehouse A'}</div>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-bold text-amber-300">
                           {formatPrice(p.selling_price, currentCurrency)}
