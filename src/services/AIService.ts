@@ -2,6 +2,84 @@ import { Product, AIProductAnalysis, AIPromotionAdvice, AIImportAdvice, Decision
 import { dbService } from './DatabaseService';
 import { forecastService } from './ForecastService';
 
+/**
+ * 🏢 Business Context Builder
+ * Assembles live real-time state from Inventory, Sales, Customers, Suppliers, and Expiry Databases
+ * to ground the AI Business Agent in complete enterprise context.
+ */
+export class BusinessContextBuilder {
+  public static buildContext() {
+    const products = dbService.getProducts();
+    const sales = dbService.getSalesHistory();
+    const invoices = dbService.getInvoices();
+    const customers = dbService.getCustomers();
+    const suppliers = dbService.getSuppliers();
+    const alerts = dbService.getAlertHistory().filter(a => a.status === 'Active');
+    const events = dbService.getSeasonalEvents();
+    const users = dbService.getUsers();
+
+    const getSalesRev = (s: any) => {
+      const val = Number(s?.total_revenue || (s?.quantity_sold * s?.unit_price) || 0);
+      return isNaN(val) ? 0 : val;
+    };
+
+    const totalInventoryValueCost = products.reduce((sum, p) => sum + (p.quantity * (p.cost_price || 0)), 0);
+    const totalInventoryValueRetail = products.reduce((sum, p) => sum + (p.quantity * (p.selling_price || 0)), 0);
+    const totalRecordedRevenue = sales.reduce((sum, s) => sum + getSalesRev(s), 0);
+
+    return {
+      inventoryDatabase: {
+        totalSKUs: products.length,
+        totalCostValue: totalInventoryValueCost,
+        totalRetailValue: totalInventoryValueRetail,
+        products: products.map(p => ({
+          id: p.product_id,
+          name: p.product_name,
+          category: p.category,
+          quantity: p.quantity,
+          unit: p.unit,
+          cost: p.cost_price,
+          selling: p.selling_price,
+          warehouse: p.warehouse,
+          expiry: p.expiry_date,
+          status: p.status
+        }))
+      },
+      salesDatabase: {
+        totalSalesCount: sales.length,
+        totalRevenue: totalRecordedRevenue,
+        invoicesCount: invoices.length,
+        recentInvoices: invoices.slice(0, 10),
+        recentSales: sales.slice(0, 10)
+      },
+      customersDatabase: {
+        totalCustomers: customers.length,
+        customers: customers.map(c => ({
+          name: c.company_name || c.name,
+          country: c.country,
+          totalSpent: c.total_spent,
+          orders: c.total_orders,
+          creditLimit: c.credit_limit,
+          status: c.status
+        }))
+      },
+      suppliersDatabase: {
+        suppliers: suppliers.map(s => ({
+          name: s.supplier_name,
+          country: s.country,
+          rating: s.rating,
+          leadTimeDays: s.lead_time_days
+        }))
+      },
+      expiryAndDemandDatabase: {
+        activeAlerts: alerts,
+        seasonalEvents: events
+      },
+      usersDatabase: users.map(u => ({ username: u.username, name: u.fullName, role: u.role }))
+    };
+  }
+}
+
 export class AIService {
   public async callGeminiAPI(prompt: string): Promise<{ success: boolean; text?: string; error?: string }> {
     const settings = dbService.getSettings();
@@ -255,28 +333,27 @@ export class AIService {
   }
 
   public async answerQueryAsync(query: string, language: string = 'en'): Promise<string> {
-    const products = dbService.getProducts();
-    const alerts = dbService.getAlertHistory().filter(a => a.status === 'Active');
-    const events = dbService.getSeasonalEvents();
-    const users = dbService.getUsers();
-    const sales = dbService.getSalesHistory();
-    const invoices = dbService.getInvoices();
-    const customers = dbService.getCustomers();
-    const suppliers = dbService.getSuppliers();
+    const context = BusinessContextBuilder.buildContext();
 
     const systemPrompt = `You are FOF-AI, the Chief Business Intelligence Officer & AI CEO Copilot for ETS FOFANA CONFISERIE (a confectionery import & distribution enterprise based in Mali importing from Turkey, Morocco, Tunisia, Brazil, China, Thailand, and Belgium, and distributing across Mali, Burkina Faso, Côte d'Ivoire, Angola).
 
 Language Preference: MUST REPLY ENTIRELY IN ${language === 'fr' ? 'FRENCH' : 'ENGLISH'}.
 
-Live Real-Time Operational Database Context:
-- MANAGED PRODUCTS (${products.length}): ${JSON.stringify(products)}
-- ISSUED INVOICES (${invoices.length}): ${JSON.stringify(invoices)}
-- SALES HISTORY (${sales.length}): ${JSON.stringify(sales)}
-- REGISTERED CUSTOMERS (${customers.length}): ${JSON.stringify(customers)}
-- REGISTERED SUPPLIERS (${suppliers.length}): ${JSON.stringify(suppliers)}
-- ACTIVE EXPIRY ALERTS (${alerts.length}): ${JSON.stringify(alerts)}
-- SEASONAL EVENTS: ${JSON.stringify(events)}
-- REGISTERED USERS & ROLES: ${users.map(u => `${u.fullName} (@${u.username}, Role: ${u.role})`).join(', ')}
+[REAL-TIME BUSINESS CONTEXT BUILDER LAYER]
+- INVENTORY DATABASE: Total SKUs = ${context.inventoryDatabase.totalSKUs}, Cost Valuation = $${context.inventoryDatabase.totalCostValue.toLocaleString()}, Retail Valuation = $${context.inventoryDatabase.totalRetailValue.toLocaleString()}
+Products: ${JSON.stringify(context.inventoryDatabase.products)}
+
+- SALES DATABASE: Total Recorded Revenue = $${context.salesDatabase.totalRevenue.toLocaleString()}, Total Invoices = ${context.salesDatabase.invoicesCount}
+Recent Invoices: ${JSON.stringify(context.salesDatabase.recentInvoices)}
+Recent Sales History: ${JSON.stringify(context.salesDatabase.recentSales)}
+
+- CUSTOMERS DATABASE (${context.customersDatabase.totalCustomers} Accounts): ${JSON.stringify(context.customersDatabase.customers)}
+
+- SUPPLIERS DATABASE: ${JSON.stringify(context.suppliersDatabase.suppliers)}
+
+- EXPIRY & DEMAND FORECAST DATABASE: Active Alerts = ${JSON.stringify(context.expiryAndDemandDatabase.activeAlerts)}, Seasonal Multipliers = ${JSON.stringify(context.expiryAndDemandDatabase.seasonalEvents)}
+
+- USER ROLES: ${JSON.stringify(context.usersDatabase)}
 
 Instructions:
 1. Act as an expert Chief Business Intelligence Officer and AI CEO Copilot.
@@ -309,11 +386,6 @@ User Query: "${query}"`;
     // Helper for safe calculations (NO $NaN EVER)
     const getSalesRev = (s: any) => {
       const val = Number(s?.total_revenue || (s?.quantity_sold * s?.unit_price) || 0);
-      return isNaN(val) ? 0 : val;
-    };
-
-    const getInvTotal = (inv: any) => {
-      const val = Number(inv?.total_amount || inv?.subtotal || 0);
       return isNaN(val) ? 0 : val;
     };
 
