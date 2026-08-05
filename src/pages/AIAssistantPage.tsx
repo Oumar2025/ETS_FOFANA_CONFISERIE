@@ -100,7 +100,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ userRole = 'Su
     setIsThinking(true);
 
     try {
-      const responseText = await aiService.answerQueryAsync(text);
+      const responseText = await aiService.answerQueryAsync(text, 'en', userRole);
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
@@ -108,15 +108,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ userRole = 'Su
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, aiMsg]);
-    } catch (err) {
-      const fallbackText = aiService.answerQuery(text);
-      const aiMsg: ChatMessage = {
+    } catch (err: any) {
+      const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: fallbackText,
+        text: `⚠️ **AI Service Execution Error**: ${err?.message || 'An error occurred while building business context or connecting to Gemini AI.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsThinking(false);
     }
