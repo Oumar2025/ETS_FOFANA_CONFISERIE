@@ -2,6 +2,7 @@ import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import nodemailer from 'nodemailer';
+import fs from 'fs';
 
 // Disable TLS rejection for local antivirus/proxy compatibility
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -74,8 +75,40 @@ const emailApiPlugin = (): Plugin => ({
   }
 });
 
+const envApiPlugin = (): Plugin => ({
+  name: 'env-api-plugin',
+  configureServer(server) {
+    server.middlewares.use('/api/save-env', (req, res) => {
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const { googleApiKey, senderEmail, emailPassword, receiverEmail } = data;
+            const envContent = `VITE_GOOGLE_API_KEY=${googleApiKey || ''}\nVITE_SENDER_EMAIL=${senderEmail || ''}\nVITE_EMAIL_PASSWORD=${emailPassword || ''}\nVITE_RECEIVER_EMAIL=${receiverEmail || ''}\n`;
+            fs.writeFileSync(path.resolve(__dirname, '.env'), envContent);
+            console.log('[ENV SYNC SUCCESS] Updated .env file on disk!');
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true }));
+          } catch (err: any) {
+            console.error('[ENV SYNC FAILURE]', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        });
+      } else {
+        res.statusCode = 405;
+        res.end('Method Not Allowed');
+      }
+    });
+  }
+});
+
 export default defineConfig({
-  plugins: [react(), emailApiPlugin()],
+  plugins: [react(), emailApiPlugin(), envApiPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

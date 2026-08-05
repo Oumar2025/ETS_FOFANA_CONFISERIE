@@ -1221,12 +1221,27 @@ export class DatabaseService {
     try {
       const data = localStorage.getItem(SETTINGS_KEY);
       const parsed = data ? JSON.parse(data) : DEFAULT_SETTINGS;
+      const envKey = (import.meta as any).env?.VITE_GOOGLE_API_KEY;
+      const envSender = (import.meta as any).env?.VITE_SENDER_EMAIL;
+      const envPass = (import.meta as any).env?.VITE_EMAIL_PASSWORD;
+      const envRecv = (import.meta as any).env?.VITE_RECEIVER_EMAIL;
+
       return {
         ...DEFAULT_SETTINGS,
         ...parsed,
         general: { ...DEFAULT_SETTINGS.general, ...(parsed.general || {}) },
-        ai: { ...DEFAULT_SETTINGS.ai, ...(parsed.ai || {}) },
-        email: { ...DEFAULT_SETTINGS.email, ...(parsed.email || {}) }
+        ai: {
+          ...DEFAULT_SETTINGS.ai,
+          ...(parsed.ai || {}),
+          googleApiKey: parsed?.ai?.googleApiKey || envKey || DEFAULT_SETTINGS.ai?.googleApiKey || ''
+        },
+        email: {
+          ...DEFAULT_SETTINGS.email,
+          ...(parsed.email || {}),
+          senderEmail: parsed?.email?.senderEmail || envSender || DEFAULT_SETTINGS.email?.senderEmail || '',
+          smtpPassword: parsed?.email?.smtpPassword || envPass || DEFAULT_SETTINGS.email?.smtpPassword || '',
+          receiverEmail: parsed?.email?.receiverEmail || envRecv || DEFAULT_SETTINGS.email?.receiverEmail || ''
+        }
       };
     } catch {
       return DEFAULT_SETTINGS;
@@ -1236,6 +1251,22 @@ export class DatabaseService {
   public saveSettings(settings: SystemSettingsConfig) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     this.pushToCloudDatabase();
+
+    // Trigger automatic API call to sync settings back to .env file on disk
+    try {
+      fetch('/api/save-env', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          googleApiKey: settings.ai?.googleApiKey,
+          senderEmail: settings.email?.senderEmail,
+          emailPassword: settings.email?.smtpPassword,
+          receiverEmail: settings.email?.receiverEmail
+        })
+      }).catch(err => console.warn('[ENV DISK SYNC NOTICE]', err));
+    } catch (e) {
+      // Ignored in production static build
+    }
   }
 
   public resetToSeed() {

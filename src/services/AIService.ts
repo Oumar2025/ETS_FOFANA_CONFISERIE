@@ -213,20 +213,22 @@ export class AIService {
    */
   public async callGeminiAPI(prompt: string): Promise<{ success: boolean; text?: string; error?: string }> {
     const settings = dbService.getSettings();
-    const apiKey = settings.ai.googleApiKey || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
+    const apiKey = settings.ai?.googleApiKey || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
+    const cleanedKey = apiKey ? apiKey.trim() : '';
 
-    if (!apiKey || apiKey.includes('AQ.Ab8RNwY') || apiKey.length < 10) {
+    if (!cleanedKey || cleanedKey.length < 5) {
       return {
         success: false,
         error: "NO_VALID_API_KEY: Please configure a valid Google Gemini API key in System Settings (or VITE_GOOGLE_API_KEY)."
       };
     }
 
-    const modelsToTry = [settings.ai.model || 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+    const modelsToTry = [settings.ai?.model || 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+    let lastError = '';
 
     for (const model of modelsToTry) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanedKey}`;
         
         const response = await fetch(url, {
           method: 'POST',
@@ -234,8 +236,8 @@ export class AIService {
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: settings.ai.creativity || 0.7,
-              maxOutputTokens: settings.ai.maxTokens || 2048
+              temperature: settings.ai?.creativity || 0.7,
+              maxOutputTokens: settings.ai?.maxTokens || 2048
             }
           })
         });
@@ -246,16 +248,19 @@ export class AIService {
           if (candidateText) return { success: true, text: candidateText.trim() };
         } else {
           const errData = await response.json().catch(() => ({}));
-          console.warn(`[AIService Gemini ${model}] HTTP ${response.status}:`, errData);
+          const errMsg = errData?.error?.message || `HTTP ${response.status} ${response.statusText}`;
+          console.warn(`[AIService Gemini ${model}] API returned status ${response.status}:`, errData);
+          lastError = errMsg;
         }
       } catch (err: any) {
         console.warn(`[AIService Gemini ${model}] Fetch network error:`, err);
+        lastError = err?.message || 'Network fetch error';
       }
     }
 
     return {
       success: false,
-      error: "GEMINI_API_ERROR: Failed to connect to Google Gemini API servers. Please check your network connection and API key validity."
+      error: `GEMINI_API_ERROR: ${lastError || 'Failed to connect to Google Gemini API servers. Please check your network connection and API key validity.'}`
     };
   }
 
