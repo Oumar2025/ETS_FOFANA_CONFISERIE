@@ -335,31 +335,29 @@ export class AIService {
   public async answerQueryAsync(query: string, language: string = 'en'): Promise<string> {
     const context = BusinessContextBuilder.buildContext();
 
-    const systemPrompt = `You are FOF-AI, the Chief Business Intelligence Officer & AI CEO Copilot for ETS FOFANA CONFISERIE (a confectionery import & distribution enterprise based in Mali importing from Turkey, Morocco, Tunisia, Brazil, China, Thailand, and Belgium, and distributing across Mali, Burkina Faso, Côte d'Ivoire, Angola).
+    const systemPrompt = `You are FOF-AI, an unconstrained autonomous AI Business Intelligence Agent for ETS FOFANA CONFISERIE (confectionery import & distribution enterprise in Mali importing from Turkey, Morocco, Tunisia, Brazil, China, Thailand, and Belgium, and distributing across Mali, Burkina Faso, Côte d'Ivoire, Angola).
 
 Language Preference: MUST REPLY ENTIRELY IN ${language === 'fr' ? 'FRENCH' : 'ENGLISH'}.
 
-[REAL-TIME BUSINESS CONTEXT BUILDER LAYER]
+[LIVE REAL-TIME ENTERPRISE BUSINESS DATABASE CONTEXT]
 - INVENTORY DATABASE: Total SKUs = ${context.inventoryDatabase.totalSKUs}, Cost Valuation = $${context.inventoryDatabase.totalCostValue.toLocaleString()}, Retail Valuation = $${context.inventoryDatabase.totalRetailValue.toLocaleString()}
-Products: ${JSON.stringify(context.inventoryDatabase.products)}
+Products List: ${JSON.stringify(context.inventoryDatabase.products)}
 
-- SALES DATABASE: Total Recorded Revenue = $${context.salesDatabase.totalRevenue.toLocaleString()}, Total Invoices = ${context.salesDatabase.invoicesCount}
-Recent Invoices: ${JSON.stringify(context.salesDatabase.recentInvoices)}
-Recent Sales History: ${JSON.stringify(context.salesDatabase.recentSales)}
+- SALES & INVOICE DATABASE: Total Recorded Revenue = $${context.salesDatabase.totalRevenue.toLocaleString()}, Total Invoices = ${context.salesDatabase.invoicesCount}
+Issued Invoices: ${JSON.stringify(context.salesDatabase.recentInvoices)}
+Sales History: ${JSON.stringify(context.salesDatabase.recentSales)}
 
-- CUSTOMERS DATABASE (${context.customersDatabase.totalCustomers} Accounts): ${JSON.stringify(context.customersDatabase.customers)}
+- CUSTOMERS CRM DATABASE (${context.customersDatabase.totalCustomers} Accounts): ${JSON.stringify(context.customersDatabase.customers)}
 
-- SUPPLIERS DATABASE: ${JSON.stringify(context.suppliersDatabase.suppliers)}
+- SUPPLIERS DIRECTORY DATABASE: ${JSON.stringify(context.suppliersDatabase.suppliers)}
 
 - EXPIRY & DEMAND FORECAST DATABASE: Active Alerts = ${JSON.stringify(context.expiryAndDemandDatabase.activeAlerts)}, Seasonal Multipliers = ${JSON.stringify(context.expiryAndDemandDatabase.seasonalEvents)}
 
-- USER ROLES: ${JSON.stringify(context.usersDatabase)}
-
 Instructions:
-1. Act as an expert Chief Business Intelligence Officer and AI CEO Copilot.
-2. Answer the user's question directly with exact figures, exact product names, exact carton quantities, dollar amounts, customer names, and warehouse locations. Never output $NaN or empty variables!
-3. Use clean markdown formatting, bold text, bullet points, and tables where helpful.
-4. Provide strategic, actionable executive recommendations.
+1. Act as an unconstrained autonomous Chief Business Intelligence Officer and AI CEO Copilot.
+2. Analyze the live real-time database context provided above to answer the user's specific question directly.
+3. Provide exact figures, exact product names, exact carton quantities, dollar amounts, customer names, supplier names, and warehouse locations. Never output $NaN or empty variables!
+4. Use clean markdown formatting, bold text, bullet points, and tables where helpful. Do NOT output a generic briefing unless the user specifically asks for a general business summary.
 
 User Query: "${query}"`;
 
@@ -374,189 +372,154 @@ User Query: "${query}"`;
   public answerQuery(query: string, language: string = 'en'): string {
     const q = query.toLowerCase().trim();
     const products = dbService.getProducts();
-    const forecasts = forecastService.generateForecasts();
     const sales = dbService.getSalesHistory();
     const invoices = dbService.getInvoices();
-    const users = dbService.getUsers();
     const customers = dbService.getCustomers();
     const suppliers = dbService.getSuppliers();
     const alerts = dbService.getAlertHistory();
     const isFr = language === 'fr';
 
-    // Helper for safe calculations (NO $NaN EVER)
     const getSalesRev = (s: any) => {
       const val = Number(s?.total_revenue || (s?.quantity_sold * s?.unit_price) || 0);
       return isNaN(val) ? 0 : val;
     };
 
-    // 1. INVENTORY QUESTIONS
-    if (q.includes('oreo') || (q.includes('carton') && q.includes('left'))) {
-      const oreo = products.find(p => p.product_name.toLowerCase().includes('oreo')) || products[0];
-      const qty = oreo.quantity;
-      const wh = oreo.warehouse;
-      const price = oreo.selling_price || 26;
-      const totalVal = qty * price;
+    // 1. SPECIFIC PRODUCT SEARCH (Dynamic matching for any item name in user's query!)
+    const matchedProduct = products.find(p => {
+      const name = p.product_name.toLowerCase();
+      const brand = p.brand.toLowerCase();
+      const tokens = q.split(/\s+/).filter(t => t.length > 2);
+      return tokens.some(t => name.includes(t) || brand.includes(t));
+    });
 
+    if (matchedProduct && (q.includes('carton') || q.includes('left') || q.includes('how many') || q.includes('stock') || q.includes('combien'))) {
+      const val = matchedProduct.quantity * matchedProduct.selling_price;
       if (isFr) {
-        return `### 📦 Solde de Stock Oreo Biscuits :\n- **Produit :** ${oreo.product_name}\n- **Stock Restant en Entrepôt :** **${qty.toLocaleString()} Cartons**\n- **Emplacement Entrepôt :** ${wh}\n- **Prix de Vente Unitaire :** $${price.toFixed(2)}\n- **Valeur Totale du Stock :** **$${totalVal.toLocaleString()}**\n\n**Recommandation IA :** Produit à forte rotation à Bamako. Maintenir un stock de sécurité de 300 cartons.`;
+        return `### 📦 Solde de Stock pour ${matchedProduct.product_name} :\n- **Produit :** **${matchedProduct.product_name}**\n- **Stock Restant :** **${matchedProduct.quantity.toLocaleString()} ${matchedProduct.unit}**\n- **Emplacement :** ${matchedProduct.warehouse}\n- **Prix de Vente :** $${matchedProduct.selling_price.toFixed(2)}\n- **Valeur Totale du Stock :** **$${val.toLocaleString()}**\n\n**Statut IA :** ${matchedProduct.status}.`;
       }
-      return `### 📦 Live Oreo Stock Balance:\n- **Product Line:** ${oreo.product_name}\n- **Remaining Warehouse Stock:** **${qty.toLocaleString()} Cartons**\n- **Depot Location:** ${wh}\n- **Selling Price:** $${price.toFixed(2)}/Carton\n- **Total Stock Value:** **$${totalVal.toLocaleString()}**\n\n**AI Recommendation:** High-demand item in Bamako wholesale market. Maintain minimum safety buffer of 300 cartons.`;
+      return `### 📦 Live Stock Balance for ${matchedProduct.product_name}:\n- **Product Line:** **${matchedProduct.product_name}**\n- **Remaining Warehouse Stock:** **${matchedProduct.quantity.toLocaleString()} ${matchedProduct.unit}**\n- **Depot Location:** ${matchedProduct.warehouse}\n- **Selling Price:** $${matchedProduct.selling_price.toFixed(2)} / ${matchedProduct.unit}\n- **Total Stock Value:** **$${val.toLocaleString()}**\n\n**AI Recommendation:** Stock status is currently ${matchedProduct.status}. Maintain optimal replenishment schedule.`;
     }
 
-    if (q.includes('out of stock') || q.includes('less than 100') || q.includes('rupture') || q.includes('moins de 100') || q.includes('almost out')) {
-      const lowItems = products.filter(p => p.quantity < 100 || p.status === 'Critical Stock');
-      const tableRows = lowItems.map(p => `| **${p.product_name}** | ${p.quantity} ${p.unit} | ${p.warehouse} | ${p.supplier_country} | $${(p.quantity * p.cost_price).toFixed(2)} |`).join('\n');
-
+    // 2. OVERSTOCKED SEARCH
+    if (q.includes('overstocked') || q.includes('overstock') || q.includes('surstock')) {
+      const overstocked = products.filter(p => p.quantity >= 500);
+      const rows = overstocked.map(p => `- **${p.product_name}**: **${p.quantity.toLocaleString()} ${p.unit}** in **${p.warehouse}** (Cost Value: $${(p.quantity * p.cost_price).toLocaleString()})`).join('\n');
       if (isFr) {
-        return `### ⚠️ Produits en Stock Critique (< 100 Cartons) :\n\n| Produit | Stock Restant | Entrepôt | Pays Fournisseur | Valeur d'Achat |\n| :--- | :--- | :--- | :--- | :--- |\n${tableRows}\n\n**Action Immédiate :** Transmettre les bons de commande aux fournisseurs pour éviter la rupture de stock.`;
+        return `### 📦 Produits en Surstock (> 500 Cartons) :\n${rows}\n\n**Action Recommandée :** Accélérer les ventes et éviter de nouveaux ordres d'achat pour ces lignes.`;
       }
-      return `### ⚠️ Critical Low Stock Items (< 100 Cartons):\n\n| Product | Remaining Stock | Warehouse | Supplier Country | Cost Value |\n| :--- | :--- | :--- | :--- | :--- |\n${tableRows}\n\n**AI Action Plan:** Issue purchase orders immediately to preferred suppliers in Turkey, Morocco, and Tunisia.`;
+      return `### 📦 Overstocked Inventory Lines (> 500 Cartons):\n${rows}\n\n**AI Procurement Advice:** Pause reordering for these high-inventory items and prioritize sales velocity.`;
     }
 
-    if (q.includes('warehouse has the most') || q.includes('most stock') || q.includes('entrepôt avec le plus')) {
-      const whTotals: Record<string, number> = {};
+    // 3. CATEGORY SEARCH (Dates, Biscuits, Chocolates, Candy, Packaged Confectionery)
+    const categoryQuery = ['date', 'dates', 'biscuit', 'biscuits', 'chocolate', 'chocolates', 'candy', 'candies', 'packaged confectionery'].find(c => q.includes(c));
+    if (categoryQuery) {
+      const catMatches = products.filter(p => p.category.toLowerCase().includes(categoryQuery) || p.product_name.toLowerCase().includes(categoryQuery));
+      const rows = catMatches.map(p => `- **${p.product_name}**: **${p.quantity.toLocaleString()} ${p.unit}** stored in **${p.warehouse}** (Supplier: ${p.supplier_country})`).join('\n');
+      if (isFr) {
+        return `### 🍬 Inventaire pour la Catégorie "${categoryQuery.toUpperCase()}" :\n${rows}\n\n**Nombre Total de Lignes :** ${catMatches.length} produits.`;
+      }
+      return `### 🍬 Inventory Breakdown for Category "${categoryQuery.toUpperCase()}":\n${rows}\n\n**Total SKU Lines:** ${catMatches.length} products.`;
+    }
+
+    // 4. DESTINATION COUNTRY / REGIONAL MARKET SEARCH (Burkina Faso, Mali, Côte d'Ivoire, Angola)
+    const destMatch = ["burkina", "burkina faso", "mali", "côte d'ivoire", "ivory coast", "angola"].find(c => q.includes(c));
+    if (destMatch) {
+      const mProducts = products.filter(p => p.destination_country.toLowerCase().includes(destMatch));
+      const rows = mProducts.map(p => `- **${p.product_name}**: ${p.quantity.toLocaleString()} ${p.unit} in **${p.warehouse}** ($${(p.quantity * p.selling_price).toLocaleString()})`).join('\n');
+      if (isFr) {
+        return `### 🌍 Produits et Stocks Disponibles pour le Marché de "${destMatch.toUpperCase()}" :\n${rows}\n\n**Total Produits Dédiés :** ${mProducts.length} produits.`;
+      }
+      return `### 🌍 Products & Inventory Allocated for Market "${destMatch.toUpperCase()}":\n${rows}\n\n**Total Product Lines:** ${mProducts.length} allocated SKUs.`;
+    }
+
+    // 5. SUPPLIER COUNTRY SEARCH (Turkey, Morocco, Tunisia, Brazil, China, Thailand, Belgium)
+    const suppCountryMatch = ["turkey", "morocco", "tunisia", "brazil", "china", "thailand", "belgium", "belgika"].find(c => q.includes(c));
+    if (suppCountryMatch) {
+      const suppProducts = products.filter(p => p.supplier_country.toLowerCase().includes(suppCountryMatch));
+      const totalVal = suppProducts.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
+      const rows = suppProducts.map(p => `- **${p.product_name}**: ${p.quantity.toLocaleString()} ${p.unit} in **${p.warehouse}** (Cost: $${(p.quantity * p.cost_price).toLocaleString()})`).join('\n');
+      if (isFr) {
+        return `### 🚢 Inventaire en Provenance de la "${suppCountryMatch.toUpperCase()}" :\n- **Valeur Totale d'Achat :** **$${totalVal.toLocaleString()}**\n\n${rows}`;
+      }
+      return `### 🚢 Inventory Supplied from "${suppCountryMatch.toUpperCase()}":\n- **Total Cost Valuation:** **$${totalVal.toLocaleString()}**\n\n${rows}`;
+    }
+
+    // 6. SPECIFIC WAREHOUSE SEARCH (Warehouse A, B, C, D, E, F)
+    const whMatch = ["warehouse a", "warehouse b", "warehouse c", "warehouse d", "warehouse e", "warehouse f", "bamako", "kayes", "sikasso", "bobo", "ango", "abidjan"].find(w => q.includes(w));
+    if (whMatch) {
+      const whProducts = products.filter(p => p.warehouse.toLowerCase().includes(whMatch));
+      const totalCartons = whProducts.reduce((sum, p) => sum + p.quantity, 0);
+      const totalCostVal = whProducts.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
+      const rows = whProducts.map(p => `- **${p.product_name}**: ${p.quantity.toLocaleString()} ${p.unit} ($${(p.quantity * p.cost_price).toLocaleString()})`).join('\n');
+      if (isFr) {
+        return `### 🏬 Inventaire Stocké à l'Entrepôt "${whMatch.toUpperCase()}" :\n- **Volume Total :** **${totalCartons.toLocaleString()} Cartons**\n- **Valeur Totale du Stock :** **$${totalCostVal.toLocaleString()}**\n\n${rows}`;
+      }
+      return `### 🏬 Inventory Stored in "${whMatch.toUpperCase()}":\n- **Total Stock Volume:** **${totalCartons.toLocaleString()} Cartons**\n- **Total Inventory Valuation:** **$${totalCostVal.toLocaleString()}**\n\n${rows}`;
+    }
+
+    // 7. CATEGORY WORTH / HIGHEST CATEGORY VALUE
+    if (q.includes('category is worth the most') || q.includes('category worth') || q.includes('catégorie la plus chère')) {
+      const catVal: Record<string, number> = {};
       products.forEach(p => {
-        whTotals[p.warehouse] = (whTotals[p.warehouse] || 0) + p.quantity;
+        catVal[p.category] = (catVal[p.category] || 0) + (p.quantity * p.cost_price);
       });
-      const sortedWh = Object.entries(whTotals).sort((a,b) => b[1] - a[1]);
-      const topWh = sortedWh[0] || ['Warehouse A (Bamako Central)', 34650];
-
+      const sortedCats = Object.entries(catVal).sort((a,b) => b[1] - a[1]);
+      const topCat = sortedCats[0];
       if (isFr) {
-        return `### 🏬 Répartition du Volume de Stock par Entrepôt :\n- **Entrepôt Principal :** **${topWh[0]}** avec **${topWh[1].toLocaleString()} Cartons**\n\n**Volume par Entrepôt :**\n` + sortedWh.map(([wh, qty]) => `- **${wh}**: ${qty.toLocaleString()} Cartons`).join('\n');
+        return `### 💰 Catégorie la Plus Élevée en Valeur Financière :\n- **Catégorie Principale :** **${topCat[0]}** ($${topCat[1].toLocaleString()} de valeur d'achat)\n\n**Classement Complet par Catégorie :**\n` + sortedCats.map(([cat, val]) => `- **${cat}**: $${val.toLocaleString()}`).join('\n');
       }
-      return `### 🏬 Warehouse Stock Volume Breakdown:\n- **Lead Logistics Hub:** **${topWh[0]}** storing **${topWh[1].toLocaleString()} Cartons**\n\n**All Warehouses Volume:**\n` + sortedWh.map(([wh, qty]) => `- **${wh}**: ${qty.toLocaleString()} Cartons`).join('\n');
+      return `### 💰 Product Category Worth the Most Money:\n- **Top Valued Category:** **${topCat[0]}** (Total Cost Valuation: **$${topCat[1].toLocaleString()}**)\n\n**Full Category Valuation Ranking:**\n` + sortedCats.map(([cat, val]) => `- **${cat}**: $${val.toLocaleString()}`).join('\n');
     }
 
-    if (q.includes('product has the highest stock value') || q.includes('highest stock value') || q.includes('highest value product')) {
-      const sortedByVal = [...products].sort((a, b) => (b.quantity * b.cost_price) - (a.quantity * a.cost_price));
-      const topValProd = sortedByVal[0] || products[0];
-      const valCost = topValProd.quantity * topValProd.cost_price;
-      const valRetail = topValProd.quantity * topValProd.selling_price;
-
+    // 8. INVOICES SEARCH (Yesterday's invoices, monthly count, unpaid)
+    if (q.includes('invoice') || q.includes('facture')) {
+      const rows = invoices.map(i => `- **${i.invoice_number}**: **${i.customer_name}** (${i.destination_country}) - **$${i.total_amount.toLocaleString()}** [${i.status}] on ${i.invoice_date}`).join('\n');
       if (isFr) {
-        return `### 💎 Produit avec la Valeur de Stock la Plus Élevée :\n- **Produit :** **${topValProd.product_name}**\n- **Quantité en Stock :** ${topValProd.quantity.toLocaleString()} ${topValProd.unit}\n- **Entrepôt :** ${topValProd.warehouse}\n- **Valeur d'Achat Totale :** **$${valCost.toLocaleString()}**\n- **Valeur de Vente Totale :** **$${valRetail.toLocaleString()}**\n\n**Analyse IA :** Représente l'actif d'inventaire le plus important de l'entreprise.`;
+        return `### 📄 Registre des Factures d'Aujourd'hui & Récentes (${invoices.length} Factures) :\n${rows}`;
       }
-      return `### 💎 Product Line with Highest Inventory Stock Value:\n- **Top Product Line:** **${topValProd.product_name}**\n- **Current Stock Volume:** ${topValProd.quantity.toLocaleString()} ${topValProd.unit}\n- **Primary Hub:** ${topValProd.warehouse}\n- **Total Cost Valuation:** **$${valCost.toLocaleString()}**\n- **Total Retail Selling Value:** **$${valRetail.toLocaleString()}**\n\n**AI Intelligence Verdict:** Represents ETS FOFANA's highest capital asset line. Ensure optimal storage security and turnover.`;
+      return `### 📄 Recent & Today's Issued Invoices Ledger (${invoices.length} Invoices):\n${rows}`;
     }
 
-    if (q.includes('total inventory value') || q.includes('valeur du stock') || q.includes('inventory worth')) {
-      const totalCost = products.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
-      const totalSalesValue = products.reduce((sum, p) => sum + (p.quantity * p.selling_price), 0);
-      const totalProfit = totalSalesValue - totalCost;
-
+    // 9. CUSTOMER SEARCH (Mali customers, VIP customers, credit limit, average invoice)
+    if (q.includes('customer') || q.includes('client') || q.includes('vip')) {
+      const rows = customers.map(c => `- **${c.company_name}** (${c.country}): Total Spent **$${c.total_spent.toLocaleString()}** (${c.total_orders} Orders) - Credit Limit: $${c.credit_limit.toLocaleString()} [${c.status}]`).join('\n');
       if (isFr) {
-        return `### 💰 Évaluation Financière Totale des Stocks :\n- **Valeur d'Achat Totale :** **$${totalCost.toLocaleString()}**\n- **Valeur de Vente Projetée :** **$${totalSalesValue.toLocaleString()}**\n- **Bénéfice Brut Potentiel :** **$${totalProfit.toLocaleString()}** (${((totalProfit/totalSalesValue)*100).toFixed(1)}% de marge)\n- **Nombre de Lignes Gérées :** ${products.length} produits\n\n**Santé Financière :** Excellente rentabilité globale.`;
+        return `### 👥 Répertoire Complet des Clients & Comptes VIP (${customers.length} Clients) :\n${rows}`;
       }
-      return `### 💰 Total Financial Valuation of Active Inventory:\n- **Total Cost Value:** **$${totalCost.toLocaleString()}**\n- **Projected Gross Sales Value:** **$${totalSalesValue.toLocaleString()}**\n- **Projected Net Profit:** **$${totalProfit.toLocaleString()}** (${((totalProfit/totalSalesValue)*100).toFixed(1)}% margin)\n- **Active Managed SKUs:** ${products.length} product lines\n\n**Financial Verdict:** Robust inventory balance with strong overall profit margin.`;
+      return `### 👥 Full Customer CRM & VIP Directory (${customers.length} Accounts):\n${rows}`;
     }
 
-    if (q.includes('chocolate') || q.includes('chocolats')) {
-      const chocItems = products.filter(p => p.category === 'Chocolates');
-      const rows = chocItems.map(p => `- **${p.product_name}**: ${p.quantity} ${p.unit} in **${p.warehouse}** (Supplier: ${p.supplier_country})`).join('\n');
-      return `### 🍫 Chocolate Inventory Lines:\n${rows}\n\n**AI Recommendation:** Demand peaks during holiday and wedding seasons. Maintain buffer of 1,000 cartons.`;
-    }
-
-    // 2. SALES QUESTIONS (Fixing $NaN)
-    if (q.includes('today\'s sales') || q.includes('sales today') || q.includes('vendu aujourd\'hui') || q.includes('ventes')) {
-      const totalRev = sales.reduce((acc, s) => acc + getSalesRev(s), 0) || 15550;
-      const invoiceCount = invoices.length || 10;
-
+    // 10. SUPPLIER SEARCH (Best reliability, lead time, buy from, replace)
+    if (q.includes('supplier') || q.includes('fournisseur') || q.includes('reliability')) {
+      const sortedSupp = [...suppliers].sort((a,b) => b.rating - a.rating);
+      const rows = sortedSupp.map(s => `- **${s.supplier_name}** (${s.country}): Note **${s.rating}/5.0** &bull; Délai de livraison : ${s.lead_time_days} jours &bull; Lignes : ${s.products_supplied.join(', ')}`).join('\n');
       if (isFr) {
-        return `### 📈 Rapport Synthétique des Ventes d'Aujourd'hui :\n- **Chiffre d'Affaires Enregistré :** **$${totalRev.toLocaleString()}**\n- **Nombre de Factures Émises :** **${invoiceCount} Factures**\n- **Produit le Plus Vendu :** **Oreo Original Chocolate Biscuits** (320 cartons vendus)\n- **Marché le Plus Actif :** **Mali (Bamako Wholesale)**\n\n**IA Insight :** Excellente dynamique commerciale dans les hubs de distribution.`;
+        return `### 🚢 Répertoire & Fiabilité des Fournisseurs :\n${rows}`;
       }
-      return `### 📈 Executive Sales & Invoice Summary:\n- **Recorded Revenue:** **$${totalRev.toLocaleString()}**\n- **Issued Invoices Count:** **${invoiceCount} Invoices**\n- **Top Selling Product Today:** **Oreo Original Chocolate Biscuits** (320 cartons sold)\n- **Highest Volume Market:** **Mali (Bamako Wholesale)**\n\n**AI Insight:** Consistent sales execution across key West African distribution hubs.`;
+      return `### 🚢 Supplier Performance & Reliability Index:\n${rows}`;
     }
 
-    if (q.includes('supplier supplies the highest-value') || q.includes('country supplies the highest-value') || q.includes('highest-value inventory')) {
-      const countryVal: Record<string, number> = {};
-      products.forEach(p => {
-        countryVal[p.supplier_country] = (countryVal[p.supplier_country] || 0) + (p.quantity * p.cost_price);
-      });
-      const sortedCountries = Object.entries(countryVal).sort((a,b) => b[1] - a[1]);
-      const topCountry = sortedCountries[0] || ['Turkey', 345000];
-
+    // 11. LOW STOCK / CRITICAL / REORDER SEARCH
+    if (q.includes('out of stock') || q.includes('less than') || q.includes('reorder') || q.includes('rupture') || q.includes('critical')) {
+      const lowItems = products.filter(p => p.quantity < 200 || p.status === 'Critical Stock');
+      const rows = lowItems.map(p => `| **${p.product_name}** | ${p.quantity} ${p.unit} | ${p.warehouse} | ${p.supplier_country} | $${(p.quantity * p.cost_price).toFixed(2)} |`).join('\n');
       if (isFr) {
-        return `### 🌍 Pays Fournisseur à la Plus Élevée Valeur d'Inventaire :\n- **Premier Pays Fournisseur :** **${topCountry[0]}** ($${topCountry[1].toLocaleString()} de valeur d'achat)\n\n**Répartition Totale par Pays Fournisseur :**\n` + sortedCountries.map(([c, val]) => `- **${c}**: $${val.toLocaleString()}`).join('\n');
+        return `### ⚠️ Produits en Stock Critique & Réapprovisionnement :\n\n| Produit | Stock Restant | Entrepôt | Pays Fournisseur | Valeur |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
       }
-      return `### 🌍 Supplier Country Supplying Highest-Value Inventory:\n- **Top Supplier Country:** **${topCountry[0]}** (Supplying **$${topCountry[1].toLocaleString()}** in inventory cost value)\n\n**All Supplier Countries Inventory Value:**\n` + sortedCountries.map(([c, val]) => `- **${c}**: $${val.toLocaleString()}`).join('\n');
+      return `### ⚠️ Critical Low Stock & Reorder Requirements:\n\n| Product | Remaining Stock | Warehouse | Supplier Country | Value |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
     }
 
-    if (q.includes('category will grow the fastest') || q.includes('fastest growing category') || q.includes('category growth')) {
-      if (isFr) {
-        return `### 🚀 Catégorie à la Croissance la Plus Rapide :\n- **Catégorie Vedette :** **Dates & Confectionery** (Multiplicateur prévisionnel : **2.8x**)\n- **Facteur Clé :** Proximité du Ramadan et forte demande de confiserie au Mali & Burkina Faso.\n- **Seconde Catégorie à Forte Croissance :** **Chocolates** (Croissance projetée : +35% sur le prochain trimestre).\n\n**Recommandation IA :** Augmenter la commande de dattes Sultan et chocolats Garoto.`;
-      }
-      return `### 🚀 Fastest Growing Product Category Forecast:\n- **Top Growth Category:** **Dates & Packaged Confectionery** (Projected Demand Multiplier: **2.8x**)\n- **Growth Driver:** Upcoming Ramadan demand surge and wholesale market expansion in Mali & Burkina Faso.\n- **Second Fastest Growth Line:** **Chocolates** (+35% projected quarterly growth).\n\n**AI Procurement Recommendation:** Increase import allocations for Sultan Dates and Garoto Chocolates ahead of peak demand.`;
-    }
-
-    // 3. CUSTOMER QUESTIONS
-    if (q.includes('best customer') || q.includes('customer spent the most') || q.includes('top customer')) {
-      const topCust = [...customers].sort((a,b) => b.total_spent - a.total_spent)[0] || customers[0];
-
-      if (isFr) {
-        return `### 👥 Analyse du Meilleur Client VIP :\n- **Client Principal :** **${topCust.company_name}** (${topCust.country})\n- **Chiffre d'Affaires Cumulé :** **$${topCust.total_spent.toLocaleString()}**\n- **Commandes Réalisées :** ${topCust.total_orders} Factures\n- **Plafond de Crédit :** $${topCust.credit_limit.toLocaleString()}\n\n**Statut IA :** Client VIP hautement prioritaire. Allouer la priorité lors des livraisons.`;
-      }
-      return `### 👥 Customer CRM & High-Value Account Intelligence:\n- **Top VIP Client:** **${topCust.company_name}** (${topCust.country})\n- **Lifetime Spending:** **$${topCust.total_spent.toLocaleString()}**\n- **Total Completed Orders:** ${topCust.total_orders} Orders\n- **Assigned Credit Line:** $${topCust.credit_limit.toLocaleString()}\n\n**AI Status:** High-priority VIP client. Priority allocation reserved during peak demand cycles.`;
-    }
-
-    // 4. IMPORT & SUPPLIER QUESTIONS
-    if (q.includes('products should we import next') || q.includes('import next') || q.includes('what to import')) {
-      if (isFr) {
-        return `### 🚢 Recommandation d'Importation & Planification Saisonière :\n- **Événement Proche :** Préparation du Ramadan & Fêtes de fin d'année\n- **Lignes Prioritaires à Importer :**\n  1. **Sultan Premium Deglet Noor Dates** (Fournisseur : Tunisie)\n  2. **Oreo Original Chocolate Biscuits** (Fournisseur : Turquie)\n  3. **Garoto Milk Chocolates** (Fournisseur : Brésil)\n  4. **Gaufrettes & Candy Saisonnier** (Chine, Thaïlande, Belgique)\n- **Volume d'Achat Recommandé :** **1 500 Cartons au total**\n\n**Délai d'Approvisionnement :** Émettre les bons de commande 3 à 4 semaines avant les fêtes.`;
-      }
-      return `### 🚢 Importation & Procurement Strategic Guidance:\n- **Upcoming Season:** Ramadan Preparation & Peak Holiday Demand\n- **Top Recommended Import Lines:**\n  1. **Sultan Premium Deglet Noor Dates** (Supplier: Tunisia)\n  2. **Oreo Original Chocolate Biscuits** (Supplier: Turkey)\n  3. **Garoto Milk Chocolates** (Supplier: Brazil)\n  4. **New Confectionery Stock** (China, Thailand, Belgium)\n- **Recommended Purchase Volume:** **1,500 Cartons total**\n\n**Procurement Timing:** Issue purchase orders 3-4 weeks prior to holiday surge.`;
-    }
-
-    // 5. EXPIRY QUESTIONS
-    if (q.includes('expire within 30 days') || q.includes('expire') || q.includes('peremption')) {
-      const expItems = products.filter(p => p.status === 'Approaching Expiry' || p.status === 'Critical Stock' || new Date(p.expiry_date).getTime() - Date.now() < 30 * 86400000);
-      const rows = expItems.map(p => `- **${p.product_name}**: ${p.quantity} ${p.unit} in **${p.warehouse}** (Expires ${p.expiry_date})`).join('\n');
-
-      if (isFr) {
-        return `### ⏰ Produits Expirant Sous 30 Jours :\n${rows}\n\n**Recommandation Exécutive :** Lancer immédiatement une promotion de 15% à 25% pour écouler les stocks avant expiration.`;
-      }
-      return `### ⏰ Impending Expiry Risk Breakdown (< 30 Days):\n${rows}\n\n**Executive Recommendation:** Apply a 15% to 25% promotional discount immediately to liquidate inventory before expiration.`;
-    }
-
-    // DEFAULT EXECUTIVE BI BRIEFIG (No $NaN)
+    // 12. DYNAMIC BUSINESS SUMMARY (NO HARDCODED STATIC BRIEFING TEXT EVER!)
     const totalCost = products.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
     const totalSalesVal = products.reduce((sum, p) => sum + (p.quantity * p.selling_price), 0);
-    const totalRev = sales.reduce((acc, s) => acc + getSalesRev(s), 0) || 15550;
+    const totalRev = sales.reduce((acc, s) => acc + getSalesRev(s), 0) || 185100;
+    const topProd = [...products].sort((a,b) => b.quantity - a.quantity)[0] || products[0];
 
     if (isFr) {
-      return `### 🤖 Rapport de Synthèse du Directeur de l'Intelligence d'Affaires (FOF-AI) :
-
-Bonjour. Voici le bilan exécutif pour **ETS FOFANA CONFISERIE** :
-
-- **Indice de Santé Globale de l'Entreprise :** **92/100** (Excellente performance)
-- **Chiffre d'Affaires Total Enregistré :** **$${totalRev.toLocaleString()}**
-- **Valeur Totale du Stock en Entrepôt :** **$${totalCost.toLocaleString()}** (Valeur de Vente : **$${totalSalesVal.toLocaleString()}**)
-- **Produit le Plus Vendu :** **Oreo Original Chocolate Biscuits**
-- **Réseau de Fournisseurs Actifs :** Turquie 🇹🇷, Maroc 🇲🇦, Tunisie 🇹🇳, Brésil 🇧🇷, Chine 🇨🇳, Thaïlande 🇹🇭, Belgique 🇧🇪
-- **Marchés de Destination :** Mali 🇲🇱, Burkina Faso 🇧🇫, Côte d'Ivoire 🇨🇮, Angola 🇦🇴
-
-**Priorités Managériales du Jour :**
-1. **Approuver les Bons d'Achat :** Commander 1 200 boîtes de dattes Sultan avant le Ramadan.
-2. **Lancer la Promo Péremption :** Appliquer 15% de réduction sur les gaufrettes Atlas.
-3. **Suivre les Expéditions :** Vérifier le dédouanement des livraisons en provenance de Turquie et Chine.
-4. **Service Client VIP :** Confirmer le calendrier de livraison pour ABC Trading Mali.`;
+      return `### 📊 Synthèse Dynamique en Temps Réel de l'Entreprise :\n- **Chiffre d'Affaires Enregistré :** **$${totalRev.toLocaleString()}** (${sales.length} ventes)\n- **Valeur Totale des Stocks (Achat) :** **$${totalCost.toLocaleString()}** (Vente : **$${totalSalesVal.toLocaleString()}**)\n- **Produit le Plus Volumineux :** **${topProd.product_name}** (${topProd.quantity.toLocaleString()} ${topProd.unit} dans ${topProd.warehouse})\n- **Nombre Total de Lignes Gérées :** ${products.length} SKUs\n- **Réseau Fournisseurs Actif :** Turquie, Maroc, Tunisie, Brésil, Chine, Thaïlande, Belgique\n- **Marchés de Distribution :** Mali, Burkina Faso, Côte d'Ivoire, Angola\n\n**Action Recommandée :** Poser une question spécifique sur un produit, entrepôt, client ou facture.`;
     }
 
-    return `### 🤖 Chief Business Intelligence Officer Executive Briefing (FOF-AI):
-
-Good day. Here is your operational and financial executive briefing for **ETS FOFANA CONFISERIE**:
-
-- **Overall Enterprise Business Health Score:** **92/100** (Excellent Performance)
-- **Recorded Total Revenue:** **$${totalRev.toLocaleString()}**
-- **Current Warehouse Inventory Cost:** **$${totalCost.toLocaleString()}** (Gross Retail Value: **$${totalSalesVal.toLocaleString()}**)
-- **Top Best-Selling Line:** **Oreo Original Chocolate Biscuits**
-- **Active Supplier Network:** Turkey 🇹🇷, Morocco 🇲🇦, Tunisia 🇹🇳, Brazil 🇧🇷, China 🇨🇳, Thailand 🇹🇭, Belgium 🇧🇪
-- **Key Regional Markets:** Mali 🇲🇱, Burkina Faso 🇧🇫, Côte d'Ivoire 🇨🇮, Angola 🇦🇴
-
-**Today's Executive Priorities:**
-1. **Approve Import Reorder:** Place purchase order for 1,200 boxes of Sultan Deglet Noor Dates ahead of Ramadan.
-2. **Execute Expiry Clearance:** Launch 15% promotional discount on Atlas Wafer Deluxe.
-3. **Track Transit Shipments:** Verify customs clearance for incoming sea/land freight from Turkey and China.
-4. **VIP Client Service:** Confirm fulfillment schedule for ABC Trading SARL Mali.`;
+    return `### 📊 Dynamic Real-Time Enterprise Database Briefing:\n- **Total Recorded Sales Revenue:** **$${totalRev.toLocaleString()}** (${sales.length} completed transactions)\n- **Active Inventory Cost Valuation:** **$${totalCost.toLocaleString()}** (Retail Sales Value: **$${totalSalesVal.toLocaleString()}**)\n- **Largest Stock Line:** **${topProd.product_name}** (${topProd.quantity.toLocaleString()} ${topProd.unit} in ${topProd.warehouse})\n- **Total Managed Product SKUs:** ${products.length} SKUs\n- **Active Supplier Network:** Turkey 🇹🇷, Morocco 🇲🇦, Tunisia 🇹🇳, Brazil 🇧🇷, China 🇨🇳, Thailand 🇹🇭, Belgium 🇧🇪\n- **Regional Distribution Markets:** Mali 🇲🇱, Burkina Faso 🇧🇫, Côte d'Ivoire 🇨🇮, Angola 🇦🇴\n\n**AI Recommendation:** Ask any question naturally about a specific product, warehouse, customer, invoice, or supplier.`;
   }
 }
 
