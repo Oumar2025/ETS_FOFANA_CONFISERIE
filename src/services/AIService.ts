@@ -223,12 +223,24 @@ export class AIService {
       };
     }
 
-    const modelsToTry = [settings.ai?.model || 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+    // Models pipeline: Prioritizes Gemini Flash, Gemini 2.0, Gemma models, and Gemini Pro
+    const requestedModel = settings.ai?.model || 'gemini-1.5-flash';
+    const modelsToTry = Array.from(new Set([
+      requestedModel,
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
+      'gemma-2-27b-it',
+      'gemma-2-9b-it',
+      'gemini-1.5-pro'
+    ]));
+
     let lastError = '';
+    const errorsTracked: string[] = [];
 
     for (const model of modelsToTry) {
+      const cleanModel = model.replace(/^models\//, '');
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanedKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanedKey}`;
         
         const response = await fetch(url, {
           method: 'POST',
@@ -245,22 +257,28 @@ export class AIService {
         if (response.ok) {
           const data = await response.json();
           const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText) return { success: true, text: candidateText.trim() };
+          if (candidateText) {
+            console.log(`[AIService SUCCESS] Generated response using model '${cleanModel}'!`);
+            return { success: true, text: candidateText.trim() };
+          }
         } else {
           const errData = await response.json().catch(() => ({}));
           const errMsg = errData?.error?.message || `HTTP ${response.status} ${response.statusText}`;
-          console.warn(`[AIService Gemini ${model}] API returned status ${response.status}:`, errData);
+          console.warn(`[AIService ${cleanModel}] API returned status ${response.status}:`, errData);
+          errorsTracked.push(`Model '${cleanModel}': ${errMsg}`);
           lastError = errMsg;
         }
       } catch (err: any) {
-        console.warn(`[AIService Gemini ${model}] Fetch network error:`, err);
-        lastError = err?.message || 'Network fetch error';
+        console.warn(`[AIService ${cleanModel}] Fetch network error:`, err);
+        const netErr = err?.message || 'Network fetch error';
+        errorsTracked.push(`Model '${cleanModel}': ${netErr}`);
+        lastError = netErr;
       }
     }
 
     return {
       success: false,
-      error: `GEMINI_API_ERROR: ${lastError || 'Failed to connect to Google Gemini API servers. Please check your network connection and API key validity.'}`
+      error: `GEMINI_API_ERROR: ${errorsTracked.join(' | ')}`
     };
   }
 
