@@ -547,41 +547,185 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       {/* TAB 4: SYSTEM CONFIG */}
       {activeTab === 'system' && (
-        <form onSubmit={handleSaveSettings} className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-6 max-w-2xl">
-          <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
-            <Settings className="h-5 w-5 text-amber-400" />
-            <span>System Localization & Currency Configuration</span>
-          </h2>
+        <form onSubmit={handleSaveSettings} className="space-y-6 max-w-4xl">
+          {/* CARD 1: GOOGLE GEMINI AI API INTEGRATION */}
+          <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
+              <Key className="h-5 w-5 text-purple-400" />
+              <span>Google Gemini AI API Integration (Google AI Studio Key)</span>
+            </h2>
 
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300 uppercase block">{t.languageSetting}</label>
-              <select
-                value={currentLanguage}
-                onChange={(e) => onLanguageChange(e.target.value as LanguageCode)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold"
-              >
-                <option value="en">🇬🇧 {t.english}</option>
-                <option value="fr">🇫🇷 {t.french}</option>
-              </select>
+            <div className="space-y-1 text-xs">
+              <label className="font-bold text-amber-400 uppercase block tracking-wider text-[11px]">
+                GOOGLE GEMINI API KEY (GOOGLE_API_KEY)
+              </label>
+              <input
+                type="text"
+                value={settings.ai?.googleApiKey || ''}
+                onChange={(e) => setSettings({
+                  ...settings,
+                  ai: { ...settings.ai, googleApiKey: e.target.value }
+                })}
+                placeholder="Paste your API key directly from Google AI Studio (e.g. AQ.Ab8RN...)"
+                className="w-full px-4 py-3 rounded-xl bg-slate-950/90 border border-amber-500/40 text-amber-300 font-mono text-xs shadow-inner focus:outline-none focus:border-amber-400"
+              />
+              <p className="text-[11px] text-slate-400 pt-0.5">
+                Pasted directly from Google AI Studio. This API key powers the live AI Assistant chat & product health analysis.
+              </p>
             </div>
 
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300 uppercase block">{t.currencySetting}</label>
-              <select
-                value={currentCurrency}
-                onChange={(e) => onCurrencyChange(e.target.value as CurrencyCode)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold"
-              >
-                <option value="USD">USD ($)</option>
-                <option value="FCFA">FCFA (XOF)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="TRY">TRY (₺)</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">AI PROVIDER</label>
+                <select
+                  value={settings.ai?.provider || 'Google Gemini AI'}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    ai: { ...settings.ai, provider: e.target.value as any }
+                  })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold"
+                >
+                  <option value="Google Gemini AI">Google Gemini AI (Live API)</option>
+                  <option value="Offline AI Simulation">Offline AI Simulation</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">GEMINI MODEL</label>
+                <select
+                  value={settings.ai?.model || 'gemini-1.5-flash'}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    ai: { ...settings.ai, model: e.target.value }
+                  })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold"
+                >
+                  <option value="gemini-1.5-flash">gemini-1.5-flash (Fast & Recommended)</option>
+                  <option value="gemini-2.0-flash">gemini-2.0-flash (Next Gen Fast)</option>
+                  <option value="gemini-1.5-pro">gemini-1.5-pro (Deep Intelligence)</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-slate-800">
+          {/* CARD 2: SMTP EMAIL ALERT SYSTEM CREDENTIALS */}
+          <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
+              <Mail className="h-5 w-5 text-amber-400" />
+              <span>SMTP Email Alert System Credentials (FR-08, Ch 81)</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">SENDER EMAIL ADDRESS (EMAIL_ADDRESS)</label>
+                <input
+                  type="email"
+                  value={settings.email?.senderEmail || ''}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    email: { ...settings.email, senderEmail: e.target.value }
+                  })}
+                  placeholder="hp.oumaroulife2023@gmail.com"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">SENDER APP PASSWORD (EMAIL_PASSWORD)</label>
+                <input
+                  type="password"
+                  value={settings.email?.smtpPassword || ''}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    email: { ...settings.email, smtpPassword: e.target.value }
+                  })}
+                  placeholder="••••••••••••••••"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="space-y-1 md:col-span-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">RECEIVER MANAGEMENT EMAIL (RECEIVER_EMAIL)</label>
+                <input
+                  type="email"
+                  value={settings.email?.receiverEmail || ''}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    email: { ...settings.email, receiverEmail: e.target.value }
+                  })}
+                  placeholder="f.oumarou78@gmail.com"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">SMTP SERVER</label>
+                <input
+                  type="text"
+                  value={settings.email?.smtpServer || 'smtp.fofana-confisserie.ml'}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    email: { ...settings.email, smtpServer: e.target.value }
+                  })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">SMTP PORT</label>
+                <input
+                  type="number"
+                  value={settings.email?.smtpPort || 587}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    email: { ...settings.email, smtpPort: parseInt(e.target.value) || 587 }
+                  })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 3: LOCALIZATION & CURRENCY CONFIGURATION */}
+          <div className="glass-card rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
+              <Settings className="h-5 w-5 text-amber-400" />
+              <span>System Localization & Currency Configuration</span>
+            </h2>
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">{t.languageSetting}</label>
+                <select
+                  value={currentLanguage}
+                  onChange={(e) => onLanguageChange(e.target.value as LanguageCode)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold"
+                >
+                  <option value="en">🇬🇧 {t.english}</option>
+                  <option value="fr">🇫🇷 {t.french}</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 uppercase block text-[10px]">{t.currencySetting}</label>
+                <select
+                  value={currentCurrency}
+                  onChange={(e) => onCurrencyChange(e.target.value as CurrencyCode)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 font-bold"
+                >
+                  <option value="USD">USD ($)</option>
+                  <option value="FCFA">FCFA (XOF)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="TRY">TRY (₺)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* SAVE BUTTON */}
+          <div className="flex justify-end pt-2">
             <button
               type="submit"
               className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-gold-glow flex items-center space-x-2"
