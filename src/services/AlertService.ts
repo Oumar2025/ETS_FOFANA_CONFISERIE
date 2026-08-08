@@ -6,14 +6,14 @@ export class AlertService {
     const products = dbService.getProducts();
     const validProductIds = new Set(products.map(p => p.product_id));
     
-    // Clean up orphaned alerts for products that were deleted
+    // Clean up orphaned alerts for products that were deleted or missing names
     let alerts = dbService.getAlertHistory();
-    alerts = alerts.filter(a => validProductIds.has(a.product_id));
+    alerts = alerts.filter(a => a && a.product_name && validProductIds.has(a.product_id));
 
     if (alerts.length === 0 && products.length > 0) {
       // Auto-scan current products if no alerts exist for active products
       this.scanAndGenerateAlerts();
-      alerts = dbService.getAlertHistory().filter(a => validProductIds.has(a.product_id));
+      alerts = dbService.getAlertHistory().filter(a => a && a.product_name && validProductIds.has(a.product_id));
     }
 
     dbService.saveAlertHistory(alerts);
@@ -32,7 +32,7 @@ export class AlertService {
   public scanAndGenerateAlerts(): { newAlertsCount: number; duplicateSkippedCount: number } {
     const products = dbService.getProducts();
     const validProductIds = new Set(products.map(p => p.product_id));
-    let existingAlerts = dbService.getAlertHistory().filter(a => validProductIds.has(a.product_id));
+    let existingAlerts = dbService.getAlertHistory().filter(a => a && a.product_name && validProductIds.has(a.product_id));
     let newAlertsCount = 0;
     let duplicateSkippedCount = 0;
     const now = new Date();
