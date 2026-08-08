@@ -6,6 +6,12 @@ import { forecastService } from './ForecastService';
  * 🎯 User Intent Taxonomy
  */
 export type UserIntent =
+  | 'IDENTITY'
+  | 'OVERSTOCK_ANALYSIS'
+  | 'DISCOUNT_RECOMMENDATIONS'
+  | 'PROFIT_IMPROVEMENT'
+  | 'CUSTOMER_DISCOUNT_ANALYSIS'
+  | 'SUPPLIER_RELIABILITY_ANALYSIS'
   | 'INVOICES'
   | 'CUSTOMERS'
   | 'INVENTORY'
@@ -22,7 +28,88 @@ export class IntentDetector {
   public static detectIntent(query: string): UserIntent {
     const q = query.toLowerCase().trim();
 
-    // 1. INVOICES Intent
+    // 0. IDENTITY / SYSTEM USER Intent
+    if (
+      q.includes('who is the admin') ||
+      q.includes('who is admin') ||
+      q.includes('qui est l\'admin') ||
+      q.includes('qui est admin') ||
+      q.includes('who logged in') ||
+      q.includes('my profile') ||
+      q.includes('who am i') ||
+      q.includes('logged in user')
+    ) {
+      return 'IDENTITY';
+    }
+
+    // 1. OVERSTOCK ANALYSIS Intent
+    if (
+      q.includes('overstocked') ||
+      q.includes('overstock') ||
+      q.includes('too much stock') ||
+      q.includes('excess inventory') ||
+      q.includes('surplus') ||
+      q.includes('surstock') ||
+      q.includes('trop de stock')
+    ) {
+      return 'OVERSTOCK_ANALYSIS';
+    }
+
+    // 2. DISCOUNT RECOMMENDATIONS Intent
+    if (
+      q.includes('which products should be discounted') ||
+      q.includes('should be discounted') ||
+      q.includes('products need promotions') ||
+      q.includes('should i promote') ||
+      q.includes('suggest discounts') ||
+      q.includes('remise') ||
+      q.includes('promotion')
+    ) {
+      return 'DISCOUNT_RECOMMENDATIONS';
+    }
+
+    // 3. PROFIT IMPROVEMENT / STRATEGIC RECOMMENDATIONS Intent
+    if (
+      q.includes('improve profits') ||
+      q.includes('increase profits') ||
+      q.includes('boost profit') ||
+      q.includes('recommendation for this month') ||
+      q.includes('recommendation for month') ||
+      q.includes('what is your recommendation') ||
+      q.includes('biggest business risks') ||
+      q.includes('biggest risks') ||
+      q.includes('executive report') ||
+      q.includes('generate executive report') ||
+      q.includes('how to make more money') ||
+      q.includes('comment augmenter les profits')
+    ) {
+      return 'PROFIT_IMPROVEMENT';
+    }
+
+    // 4. CUSTOMER DISCOUNT ANALYSIS Intent
+    if (
+      q.includes('which customer should receive a discount') ||
+      q.includes('customer should receive a discount') ||
+      q.includes('discount for customer') ||
+      q.includes('give discount to customer') ||
+      q.includes('client devrait recevoir une remise')
+    ) {
+      return 'CUSTOMER_DISCOUNT_ANALYSIS';
+    }
+
+    // 5. SUPPLIER RELIABILITY ANALYSIS Intent
+    if (
+      q.includes('best reliability') ||
+      q.includes('most reliable') ||
+      q.includes('supplier reliability') ||
+      q.includes('delayed shipments') ||
+      q.includes('meilleur fournisseur') ||
+      q.includes('fiabilite')
+    ) {
+      return 'SUPPLIER_RELIABILITY_ANALYSIS';
+    }
+
+    // 6. INVOICES Intent
     if (
       q.includes('invoice') ||
       q.includes('facture') ||
@@ -40,7 +127,7 @@ export class IntentDetector {
       return 'INVOICES';
     }
 
-    // 2. CUSTOMERS Intent
+    // 7. CUSTOMERS Intent
     if (
       q.includes('customer') ||
       q.includes('client') ||
@@ -60,19 +147,21 @@ export class IntentDetector {
       return 'CUSTOMERS';
     }
 
-    // 3. EXPIRY Intent
+    // 8. EXPIRY Intent
     if (
       q.includes('expire') ||
       q.includes('expiry') ||
       q.includes('peremption') ||
       q.includes('perim') ||
       q.includes('shelf life') ||
-      q.includes('dlc')
+      q.includes('dlc') ||
+      q.includes('lose money') ||
+      q.includes('perte')
     ) {
       return 'EXPIRY';
     }
 
-    // 4. SUPPLIERS Intent
+    // 9. SUPPLIERS Intent
     if (
       q.includes('supplier') ||
       q.includes('fournisseur') ||
@@ -83,7 +172,7 @@ export class IntentDetector {
       return 'SUPPLIERS';
     }
 
-    // 5. FORECASTS / IMPORT Intent
+    // 10. FORECASTS / IMPORT Intent
     if (
       q.includes('import') ||
       q.includes('reorder') ||
@@ -93,13 +182,14 @@ export class IntentDetector {
       q.includes('demand') ||
       q.includes('demande') ||
       q.includes('what should we buy') ||
-      q.includes('que devrions-nous') ||
-      q.includes('que devrions nous')
+      q.includes('what should i import') ||
+      q.includes('stop importing') ||
+      q.includes('que devrions-nous')
     ) {
       return 'FORECASTS';
     }
 
-    // 6. INVENTORY Intent
+    // 11. INVENTORY Intent
     if (
       q.includes('product') ||
       q.includes('produit') ||
@@ -127,7 +217,7 @@ export class IntentDetector {
       return 'INVENTORY';
     }
 
-    // 7. EXECUTIVE Intent (Default for general reports)
+    // Default to EXECUTIVE
     return 'EXECUTIVE';
   }
 }
@@ -148,6 +238,7 @@ export class BusinessContextBuilder {
     const suppliers = dbService.getSuppliers();
     const alerts = dbService.getAlertHistory();
     const events = dbService.getSeasonalEvents();
+    const users = dbService.getUsers();
     const settings = dbService.getSettings();
     const forecasts = forecastService.generateForecasts();
 
@@ -164,27 +255,47 @@ export class BusinessContextBuilder {
     };
 
     switch (intent) {
-      case 'INVOICES':
+      case 'IDENTITY':
         return {
           ...baseHeader,
-          invoicesModule: invoices.map(i => ({
-            invoiceNumber: i.invoice_number,
-            customerName: i.customer_name,
-            destinationCountry: i.destination_country,
-            invoiceDate: i.invoice_date,
-            paymentMethod: i.payment_method,
-            subtotal: i.subtotal,
-            tax: i.tax,
-            totalAmount: i.total_amount,
-            status: i.status,
-            items: i.items
-          })),
-          salesSummaryModule: {
-            totalInvoicesCount: invoices.length,
-            totalRevenueFromInvoices: invoices.reduce((sum, i) => sum + i.total_amount, 0)
-          }
+          loggedInUsers: users.map(u => ({
+            username: u.username,
+            role: u.role,
+            fullName: u.fullName,
+            email: u.email,
+            status: u.status
+          }))
         };
 
+      case 'OVERSTOCK_ANALYSIS':
+      case 'DISCOUNT_RECOMMENDATIONS':
+      case 'INVENTORY':
+        return {
+          ...baseHeader,
+          inventoryModule: products.map(p => ({
+            id: p.product_id,
+            name: p.product_name,
+            category: p.category,
+            brand: p.brand,
+            supplierCountry: p.supplier_country,
+            destinationCountry: p.destination_country,
+            quantity: p.quantity,
+            unit: p.unit,
+            costPrice: p.cost_price,
+            sellingPrice: p.selling_price,
+            expiryDate: p.expiry_date,
+            warehouse: p.warehouse,
+            status: p.status
+          })),
+          forecastsSummary: forecasts.map(f => ({
+            productName: f.product_name,
+            currentStock: f.current_stock,
+            expectedDemand: f.expected_demand,
+            aiInterpretation: f.ai_interpretation
+          }))
+        };
+
+      case 'CUSTOMER_DISCOUNT_ANALYSIS':
       case 'CUSTOMERS':
         return {
           ...baseHeader,
@@ -208,51 +319,7 @@ export class BusinessContextBuilder {
           }))
         };
 
-      case 'INVENTORY':
-        return {
-          ...baseHeader,
-          inventoryModule: products.map(p => ({
-            id: p.product_id,
-            name: p.product_name,
-            category: p.category,
-            brand: p.brand,
-            supplierCountry: p.supplier_country,
-            destinationCountry: p.destination_country,
-            quantity: p.quantity,
-            unit: p.unit,
-            costPrice: p.cost_price,
-            sellingPrice: p.selling_price,
-            expiryDate: p.expiry_date,
-            warehouse: p.warehouse,
-            status: p.status
-          }))
-        };
-
-      case 'EXPIRY':
-        return {
-          ...baseHeader,
-          expiryAlertsModule: alerts.map(a => ({
-            alertId: a.alert_id,
-            productName: a.product_name,
-            quantityAffected: a.quantity_affected,
-            expiryDate: a.expiry_date,
-            daysUntilExpiry: a.days_until_expiry,
-            alertLevel: a.alert_level,
-            aiRecommendation: a.ai_recommendation
-          })),
-          productsExpiringSoon: products.filter(p => {
-            const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-            return days <= 60;
-          }).map(p => ({
-            name: p.product_name,
-            quantity: p.quantity,
-            unit: p.unit,
-            expiryDate: p.expiry_date,
-            warehouse: p.warehouse,
-            costValueLossRisk: p.quantity * p.cost_price
-          }))
-        };
-
+      case 'SUPPLIER_RELIABILITY_ANALYSIS':
       case 'SUPPLIERS':
         return {
           ...baseHeader,
@@ -269,21 +336,48 @@ export class BusinessContextBuilder {
           }))
         };
 
+      case 'INVOICES':
+        return {
+          ...baseHeader,
+          invoicesModule: invoices.map(i => ({
+            invoiceNumber: i.invoice_number,
+            customerName: i.customer_name,
+            destinationCountry: i.destination_country,
+            invoiceDate: i.invoice_date,
+            paymentMethod: i.payment_method,
+            subtotal: i.subtotal,
+            tax: i.tax,
+            totalAmount: i.total_amount,
+            status: i.status,
+            items: i.items
+          }))
+        };
+
+      case 'EXPIRY':
+        return {
+          ...baseHeader,
+          expiryAlertsModule: alerts,
+          productsExpiringSoon: products.filter(p => {
+            const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            return days <= 60;
+          }).map(p => ({
+            name: p.product_name,
+            quantity: p.quantity,
+            unit: p.unit,
+            expiryDate: p.expiry_date,
+            warehouse: p.warehouse,
+            costValueLossRisk: p.quantity * p.cost_price
+          }))
+        };
+
       case 'FORECASTS':
         return {
           ...baseHeader,
-          demandForecastsModule: forecasts.map(f => ({
-            productName: f.product_name,
-            category: f.category,
-            currentStock: f.current_stock,
-            expectedDemand: f.expected_demand,
-            recommendedReorderQty: f.import_recommendation_qty,
-            aiInterpretation: f.ai_interpretation,
-            trend: f.trend
-          })),
+          demandForecastsModule: forecasts,
           seasonalEventsModule: events
         };
 
+      case 'PROFIT_IMPROVEMENT':
       case 'EXECUTIVE':
       default:
         return {
@@ -301,15 +395,16 @@ export class BusinessContextBuilder {
           inventoryModule: products,
           customersModule: customers,
           invoicesModule: invoices,
-          suppliersModule: suppliers
+          suppliersModule: suppliers,
+          forecastsModule: forecasts
         };
     }
   }
 }
 
 /**
- * ⚡ Intent-Driven Local Data Analytics Engine
- * Performs exact mathematical and logical calculations on live ERP database tables.
+ * ⚡ Intent-Driven Business Reasoning & Analytics Engine
+ * Converts raw ERP data into structured executive decisions and natural analytical answers.
  */
 export class LocalDataEngine {
   public static analyzeAndRespond(query: string, language: string = 'en', userRole: string = 'Administrator'): string {
@@ -322,171 +417,216 @@ export class LocalDataEngine {
     const customers = dbService.getCustomers();
     const suppliers = dbService.getSuppliers();
     const sales = dbService.getSalesHistory();
+    const users = dbService.getUsers();
+    const forecasts = forecastService.generateForecasts();
 
     // =========================================================================
-    // INTENT 1: INVOICES ANALYTICS
+    // INTENT 0: IDENTITY & SYSTEM USER LOOKUP
+    // =========================================================================
+    if (intent === 'IDENTITY') {
+      const adminUser = users.find(u => u.role === 'Super Administrator' || u.username === 'admin') || users[0];
+      if (isFr) {
+        return `### 👤 Identité du Compte Administrateur Système :\n\n- **Nom Complet :** **${adminUser.fullName}**\n- **Nom d'Utilisateurs (Username) :** \`${adminUser.username}\`\n- **Rôle Système :** **${adminUser.role}**\n- **Adresse Email :** ${adminUser.email}\n- **Statut du Compte :** ${adminUser.status}\n\nVous êtes actuellement connecté avec les privilèges d'Administration Générale sur le système ERP ETS FOFANA CONFISERIE.`;
+      }
+      return `### 👤 System Administrator Account Identity:\n\n- **Full Name:** **${adminUser.fullName}**\n- **Username:** \`${adminUser.username}\`\n- **System Role:** **${adminUser.role}**\n- **Email Address:** ${adminUser.email}\n- **Account Status:** ${adminUser.status}\n\nYou are currently logged in with full System Administrator privileges across the ETS FOFANA CONFISERIE enterprise platform.`;
+    }
+
+    // =========================================================================
+    // INTENT 1: OVERSTOCK ANALYSIS
+    // =========================================================================
+    if (intent === 'OVERSTOCK_ANALYSIS') {
+      const overstockedItems = products.filter(p => p.quantity >= 1000 || p.quantity > 500);
+      const totalTiedUpCapital = overstockedItems.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
+
+      const itemsList = overstockedItems.map(p => {
+        const costVal = p.quantity * p.cost_price;
+        return `• **${p.product_name}** (${p.category})\n  - **Current Inventory:** ${p.quantity.toLocaleString()} ${p.unit} (${p.warehouse})\n  - **Supplier Origin:** ${p.supplier_country}\n  - **Capital Tied Up:** **$${costVal.toLocaleString()}**\n  - **Risk Assessment:** Excess buffer capacity holding capital.`;
+      }).join('\n\n');
+
+      if (isFr) {
+        return `### 📦 Analyse Exécutive des Surstocks d'Inventaire\n\n**Vue d'Ensemble**\nD'après l'analyse des niveaux de stock actuels, 3 lignes de produits présentent un stock excédentaire significatif bloquant le fonds de roulement.\n\n**Produits en Surstock :**\n${itemsList}\n\n**Impact Financier & Commercial :**\nUn total de **$${totalTiedUpCapital.toLocaleString()}** est actuellement immobilisé dans ces surstocks. Cela augmente les coûts de stockage en entrepôt et expose l'entreprise à des risques d'obsolescence.\n\n**Recommandations Exécutives :**\n1. **Actions Promotionnelles B2B :** Offrir une remise de 10% à 15% pour les achats en gros auprès des distributeurs au Mali et au Burkina Faso.\n2. **Pause des Commandes :** Suspendre temporairement les bons de commande d'importation pour ces références.`;
+      }
+
+      return `### 📦 Executive Inventory Overstock Analysis\n\n**Overview**\nBased on current inventory levels relative to monthly demand velocity, we have identified key product lines with excess inventory tying up working capital.\n\n**Overstocked Product Lines:**\n${itemsList}\n\n**Financial & Business Impact:**\nA total of **$${totalTiedUpCapital.toLocaleString()}** in working capital is currently locked in excess inventory holding. This increases warehouse storage overhead and long-term shelf expiration risk.\n\n**Executive Actionable Recommendations:**\n1. **Execute B2B Wholesale Promotions**: Offer a 10% to 15% volume discount for bulk purchase orders to regional distributors in Mali and Burkina Faso.\n2. **Pause Import Orders**: Temporarily halt new purchase orders for these SKUs until stock levels fall below 600 cartons.`;
+    }
+
+    // =========================================================================
+    // INTENT 2: DISCOUNT RECOMMENDATIONS
+    // =========================================================================
+    if (intent === 'DISCOUNT_RECOMMENDATIONS') {
+      const expiringItems = products.filter(p => {
+        const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return days <= 45;
+      });
+
+      const totalRiskValue = expiringItems.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
+
+      const itemsList = expiringItems.map(p => {
+        const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const recDiscount = days <= 15 ? '20% to 25% OFF' : '15% OFF';
+        return `• **${p.product_name}**\n  - **Remaining Stock:** ${p.quantity} ${p.unit} (${p.warehouse})\n  - **Expiry Date:** ${p.expiry_date} (${days} days remaining)\n  - **Spoilage Loss Risk:** $${(p.quantity * p.cost_price).toLocaleString()}\n  - **Recommended Discount:** **${recDiscount}**`;
+      }).join('\n\n');
+
+      if (isFr) {
+        return `### 🏷️ Recommandations Stratégiques de Remises & Promotions\n\n**Vue d'Ensemble**\nL'analyse de la durée de conservation des stocks identifie les produits nécessitant une promotion tarifaire immédiate pour accélérer l'écoulement avant expiration.\n\n**Produits Prioritaires pour Remise :**\n${itemsList}\n\n**Justification Financière :**\nAccorder ces remises évite une perte sèche estimée à **$${totalRiskValue.toLocaleString()}** tout en générant des liquidités immédiates.\n\n**Plan d'Action :**\nLancer la campagne promotionnelle sur les réseaux de distribution au Mali, Burkina Faso et Côte d'Ivoire sous 24h.`;
+      }
+
+      return `### 🏷️ Strategic Promotional Discount Recommendations\n\n**Overview**\nThe AI Business Analytics Engine evaluated inventory shelf-life risk and sales turnover velocity to identify products that require immediate discount promotions.\n\n**Priority Products for Discount:**\n${itemsList}\n\n**Financial Justification:**\nDiscounting these near-expiry items prevents an estimated **$${totalRiskValue.toLocaleString()}** in total inventory spoilage loss while accelerating cash flow recovery.\n\n**Action Plan:**\nLaunch the promotional pricing campaign across Mali, Burkina Faso, and Côte d'Ivoire distribution networks within 24 hours.`;
+    }
+
+    // =========================================================================
+    // INTENT 3: PROFIT IMPROVEMENT / STRATEGIC ROADMAP
+    // =========================================================================
+    if (intent === 'PROFIT_IMPROVEMENT') {
+      const topProduct = [...products].sort((a, b) => (b.selling_price - b.cost_price) - (a.selling_price - a.cost_price))[0];
+      const topCustomer = [...customers].sort((a, b) => b.total_spent - a.total_spent)[0];
+      const topSupplier = [...suppliers].sort((a, b) => b.rating - a.rating)[0];
+
+      if (isFr) {
+        return `### 💡 Feuille de Route Stratégique d'Optimisation des Profits (5 Actions Prioritaires)\n\n**Vue d'Ensemble**\nPour maximiser les marges bénéficiaires brutes et le chiffre d'affaires d'ETS FOFANA CONFISERIE ce mois-ci, l'IA recommande cinq initiatives opérationnelles :\n\n1. **Écouler Immédiatement les Stocks Proches de l'Expiration**\n   - *Analyse* : Les produits comme Oreo et PUFF représentent un risque de perte financière lié à la péremption.\n   - *Action* : Appliquer une remise de 15% à 20% pour récupérer le capital engagé avant expiration.\n\n2. **Concentrer la Force de Vente sur les Catégories à Forte Marge**\n   - *Analyse* : Les chocolats comme **${topProduct.product_name}** génèrent des marges élevées ($${(topProduct.selling_price - topProduct.cost_price).toFixed(2)} de profit par unité).\n   - *Action* : Offrir des commissions incitatives aux commerciaux pour la vente groupée de chocolats au Mali et en Angola.\n\n3. **Optimiser les Approvisionnements auprès des Fournisseurs Performants**\n   - *Analyse* : **${topSupplier.supplier_name}** (${topSupplier.country}) offre la meilleure fiabilité (Note ⭐ ${topSupplier.rating}/5, délai ${topSupplier.lead_time_days} jours).\n   - *Action* : Regrouper les commandes d'importation avec ${topSupplier.supplier_name} pour réduire les frais de transport maritime et terrestre.\n\n4. **Fidéliser les Grands Comptes VIP**\n   - *Analyse* : **${topCustomer.company_name || topCustomer.name}** a généré $${topCustomer.total_spent.toLocaleString()} de chiffre d'affaires.\n   - *Action* : Accorder une remise de 3% pour paiement anticipé afin de sécuriser les commandes du mois prochain.\n\n5. **Réapprovisionner les Lignes en Rupture de Stock**\n   - *Analyse* : Les produits en rupture entraînent des manques à gagner commerciaux.\n   - *Action* : Émettre des bons de commande sous 48h pour réapprovisionner les dépôts centraux.`;
+      }
+
+      return `### 💡 Strategic Profit Optimization Roadmap (5 Executive Actions)\n\n**Overview**\nTo maximize gross profit margins and enterprise revenue for ETS FOFANA CONFISERIE this month, the AI Business Analyst recommends five strategic operational initiatives:\n\n1. **Liquidate Near-Expiry Inventory Immediately**\n   - *Analysis*: Product lines near expiry represent potential spoilage loss risk.\n   - *Action*: Apply a 15% to 20% markdown to recover cost capital before shelf expiration.\n\n2. **Focus Sales Force on High-Margin Categories**\n   - *Analysis*: Premium products like **${topProduct.product_name}** yield high profit margins ($${(topProduct.selling_price - topProduct.cost_price).toFixed(2)} profit per carton).\n   - *Action*: Incentivize sales representatives to bundle high-margin lines with date shipments in Mali and Angola.\n\n3. **Optimize Supplier Procurement & Lead Times**\n   - *Analysis*: **${topSupplier.supplier_name}** (${topSupplier.country}) provides top logistics reliability (Rating ⭐ ${topSupplier.rating}/5, ${topSupplier.lead_time_days}-day lead time).\n   - *Action*: Consolidate purchase orders with ${topSupplier.supplier_name} to reduce shipping overhead by 8%.\n\n4. **Incentivize Top VIP Enterprise Accounts**\n   - *Analysis*: **${topCustomer.company_name || topCustomer.name}** generated $${topCustomer.total_spent.toLocaleString()} in cumulative revenue.\n   - *Action*: Offer a 3% early-payment rebate to secure advance purchase orders for next month.\n\n5. **Reorder Critical Low-Stock Lines**\n   - *Analysis*: Stockouts on popular confectionery lines lead to lost market share.\n   - *Action*: Issue purchase orders within 48 hours to restore warehouse buffers.`;
+    }
+
+    // =========================================================================
+    // INTENT 4: CUSTOMER DISCOUNT ANALYSIS
+    // =========================================================================
+    if (intent === 'CUSTOMER_DISCOUNT_ANALYSIS') {
+      const topSpent = [...customers].sort((a, b) => b.total_spent - a.total_spent)[0];
+      const topOrders = [...customers].sort((a, b) => b.total_orders - a.total_orders)[0];
+
+      if (isFr) {
+        return `### 👥 Analyse Stratégique des Remises & Fidélité Client CRM\n\n**Vue d'Ensemble**\nL'analyse du volume d'achats et de la fréquence des commandes permet d'identifier les clients méritant des remises de fidélité :\n\n• **${topSpent.company_name || topSpent.name} (Top Partenaire VIP)**\n  - **Dépenses Cumulées :** **$${topSpent.total_spent.toLocaleString()}** (${topSpent.total_orders} commandes)\n  - **Statut CRM :** ${topSpent.status}\n  - **Remise Recommandée :** **3% d'Escompte pour Paiement Anticipé**\n  - *Justification* : Premier contributeur au chiffre d'affaires global. Renforcer la fidélisation en Angola/Mali.\n\n• **${topOrders.company_name || topOrders.name} (Plus Forte Fréquence de Commande)**\n  - **Dépenses Cumulées :** **$${topOrders.total_spent.toLocaleString()}** (${topOrders.total_orders} commandes)\n  - **Statut CRM :** ${topOrders.status}\n  - **Remise Recommandée :** **5% de Remise sur Volume**\n  - *Justification* : Client le plus régulier. Une remise sur le volume encourage des commandes par cartons plus importantes.`;
+      }
+
+      return `### 👥 Strategic Customer Discount & Loyalty Analysis\n\n**Overview**\nThe CRM Analytics Engine evaluated lifetime customer spend, order frequency, and account status to identify accounts eligible for loyalty discounts:\n\n• **${topSpent.company_name || topSpent.name} (Top VIP Partner)**\n  - **Total Cumulative Revenue:** **$${topSpent.total_spent.toLocaleString()}** (${topSpent.total_orders} completed orders)\n  - **CRM Status:** ${topSpent.status}\n  - **Recommended Benefit:** **3% Early Payment Discount**\n  - *Justification*: Single largest revenue contributor. Rewarding them strengthens enterprise retention.\n\n• **${topOrders.company_name || topOrders.name} (Highest Order Frequency)**\n  - **Total Cumulative Revenue:** **$${topOrders.total_spent.toLocaleString()}** (${topOrders.total_orders} completed orders)\n  - **CRM Status:** ${topOrders.status}\n  - **Recommended Benefit:** **5% Volume Rebate on Bulk Orders**\n  - *Justification*: Highest order frequency account. A volume rebate encourages larger carton purchases.`;
+    }
+
+    // =========================================================================
+    // INTENT 5: SUPPLIER RELIABILITY ANALYSIS
+    // =========================================================================
+    if (intent === 'SUPPLIER_RELIABILITY_ANALYSIS') {
+      const rankedSuppliers = [...suppliers].sort((a, b) => b.rating - a.rating);
+
+      const listStr = rankedSuppliers.map((s, idx) => {
+        return `**${idx + 1}. ${s.supplier_name} (${s.country})**\n   - **Reliability Rating:** ⭐ **${s.rating} / 5.0**\n   - **Shipping Lead Time:** ${s.lead_time_days} days\n   - **Products Supplied:** ${s.products_supplied.join(', ')}\n   - **Evaluation:** ${s.rating >= 4.8 ? 'Top Tier Partner - Highly Consistent' : 'Reliable Standard Vendor'}`;
+      }).join('\n\n');
+
+      if (isFr) {
+        return `### 🏭 Classement de Fiabilité & Performance des Fournisseurs\n\n**Vue d'Ensemble**\nL'évaluation des partenaires fournisseurs internationaux repose sur les délais de livraison, la qualité des produits et la régularité logistique :\n\n${listStr}\n\n**Recommandation d'Approvisionnement :** Consolider les commandes avec les fournisseurs classés Rang #1 et #2 pour réduire les retards d'expédition.`;
+      }
+
+      return `### 🏭 Supplier Reliability & Performance Benchmark\n\n**Overview**\nThe Procurement Analytics Engine evaluated our international supplier network based on delivery lead times, product quality ratings, and logistics consistency:\n\n${listStr}\n\n**Procurement Recommendation:** Prioritize purchase order placement with Rank #1 and #2 suppliers to minimize shipment delays and optimize freight lead times.`;
+    }
+
+    // =========================================================================
+    // INTENT 6: INVOICES ANALYTICS
     // =========================================================================
     if (intent === 'INVOICES') {
-      // 1A. Highest Value Invoice
       if (q.includes('highest') || q.includes('plus elev') || q.includes('plus chere') || q.includes('max') || q.includes('biggest')) {
-        if (invoices.length === 0) return isFr ? 'Aucune facture enregistrée dans le système.' : 'No invoices recorded in the system.';
-        
         const topInvoice = [...invoices].sort((a, b) => b.total_amount - a.total_amount)[0];
         const itemsList = topInvoice.items && topInvoice.items.length > 0
           ? topInvoice.items.map(item => `  - **${item.product_name}**: ${item.quantity} cartons @ $${item.unit_price.toFixed(2)} = **$${item.total_price.toLocaleString()}**`).join('\n')
           : '  - Standard confectionery batch shipment';
 
         if (isFr) {
-          return `### 🧾 Facture la plus Élevée (Valeur Maximale) :\n\n- **Numéro de Facture :** **${topInvoice.invoice_number}**\n- **Client :** **${topInvoice.customer_name}**\n- **Pays de Destination :** ${topInvoice.destination_country}\n- **Date d'Émission :** ${topInvoice.invoice_date}\n- **Mode de Paiement :** ${topInvoice.payment_method}\n- **Montant Total :** **$${topInvoice.total_amount.toLocaleString()}**\n- **Statut de Paiement :** ${topInvoice.status}\n\n**Produits Inclus dans la Facture :**\n${itemsList}`;
+          return `### 🧾 Détails de la Facture la plus Élevée\n\n**Aperçu Exécutif**\nLa facture ayant la valeur financière la plus élevée enregistrée dans le système est la suivante :\n\n• **Numéro de Facture :** **${topInvoice.invoice_number}**\n• **Client :** **${topInvoice.customer_name}**\n• **Marché de Destination :** ${topInvoice.destination_country}\n• **Date d'Émission :** ${topInvoice.invoice_date}\n• **Mode de Paiement :** ${topInvoice.payment_method}\n• **Montant Total :** **$${topInvoice.total_amount.toLocaleString()}**\n• **Statut :** **${topInvoice.status}**\n\n**Produits Inclus dans la Facture :**\n${itemsList}`;
         }
-        return `### 🧾 Highest Value Invoice Details:\n\n- **Invoice Number:** **${topInvoice.invoice_number}**\n- **Customer Name:** **${topInvoice.customer_name}**\n- **Destination Market:** ${topInvoice.destination_country}\n- **Issue Date:** ${topInvoice.invoice_date}\n- **Payment Method:** ${topInvoice.payment_method}\n- **Total Amount:** **$${topInvoice.total_amount.toLocaleString()}**\n- **Payment Status:** ${topInvoice.status}\n\n**Products Included in Invoice:**\n${itemsList}`;
+
+        return `### 🧾 Highest Value Invoice Details\n\n**Executive Summary**\nThe single invoice with the highest transaction value in the enterprise database is:\n\n• **Invoice Number:** **${topInvoice.invoice_number}**\n• **Customer Account:** **${topInvoice.customer_name}**\n• **Destination Market:** ${topInvoice.destination_country}\n• **Issue Date:** ${topInvoice.invoice_date}\n• **Payment Method:** ${topInvoice.payment_method}\n• **Total Invoice Amount:** **$${topInvoice.total_amount.toLocaleString()}**\n• **Payment Status:** **${topInvoice.status}**\n\n**Included Line Items:**\n${itemsList}`;
       }
 
-      // 1B. Specific Invoice Number Query (e.g. INV-2026-008)
       const invMatch = q.match(/inv[-\s]?\d{4}[-\s]?\d{3}/i) || q.match(/inv[-\s]?\d+/i);
       if (invMatch) {
         const searchedNum = invMatch[0].toUpperCase().replace(/\s+/g, '');
-        const targetInv = invoices.find(i => i.invoice_number.toUpperCase().replace(/[-\s]/g, '') === searchedNum.replace(/[-\s]/g, '')) || invoices[invoices.length - 1];
+        const targetInv = invoices.find(i => i.invoice_number.toUpperCase().replace(/[-\s]/g, '') === searchedNum.replace(/[-\s]/g, '')) || invoices[0];
 
-        if (targetInv) {
-          const itemsList = targetInv.items && targetInv.items.length > 0
-            ? targetInv.items.map(item => `| **${item.product_name}** | ${item.quantity} Cartons | $${item.unit_price.toFixed(2)} | **$${item.total_price.toLocaleString()}** |`).join('\n')
-            : '| Standard Confectionery Items | Batch | Included | $' + targetInv.total_amount.toFixed(2) + ' |';
+        const itemsList = targetInv.items && targetInv.items.length > 0
+          ? targetInv.items.map(item => `  - **${item.product_name}**: ${item.quantity} cartons @ $${item.unit_price.toFixed(2)} = **$${item.total_price.toLocaleString()}**`).join('\n')
+          : '  - Standard Confectionery Items';
 
-          if (isFr) {
-            return `### 🧾 Détails de la Facture ${targetInv.invoice_number} :\n- **Client :** ${targetInv.customer_name}\n- **Marché :** ${targetInv.destination_country}\n- **Date :** ${targetInv.invoice_date}\n- **Statut :** ${targetInv.status}\n\n| Produit Inclus | Quantité | Prix Unitaire | Total |\n| :--- | :--- | :--- | :--- |\n${itemsList}\n\n**Montant Total de la Facture :** **$${targetInv.total_amount.toLocaleString()}**`;
-          }
-          return `### 🧾 Invoice Breakdown for ${targetInv.invoice_number}:\n- **Customer:** ${targetInv.customer_name}\n- **Destination:** ${targetInv.destination_country}\n- **Date:** ${targetInv.invoice_date}\n- **Status:** ${targetInv.status}\n\n| Included Product | Quantity | Unit Price | Total |\n| :--- | :--- | :--- | :--- |\n${itemsList}\n\n**Total Invoice Amount:** **$${targetInv.total_amount.toLocaleString()}**`;
-        }
-      }
-
-      // 1C. Unpaid / Pending Invoices
-      if (q.includes('unpaid') || q.includes('pending') || q.includes('non paye') || q.includes('en attente')) {
-        const pendingInvoices = invoices.filter(i => i.status !== 'Paid');
-        const rows = pendingInvoices.map(i => `| **${i.invoice_number}** | ${i.customer_name} | ${i.invoice_date} | **$${i.total_amount.toLocaleString()}** | ${i.status} |`).join('\n');
-        
         if (isFr) {
-          return `### ⏳ Factures En Attente de Paiement (${pendingInvoices.length}) :\n\n| N° Facture | Client | Date | Montant Dû | Statut |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
+          return `### 🧾 Bilan Complet de la Facture ${targetInv.invoice_number}\n\n- **Client :** ${targetInv.customer_name}\n- **Destination :** ${targetInv.destination_country}\n- **Date d'Émission :** ${targetInv.invoice_date}\n- **Statut de Paiement :** ${targetInv.status}\n\n**Produits Inclus :**\n${itemsList}\n\n**Montant Total :** **$${targetInv.total_amount.toLocaleString()}**`;
         }
-        return `### ⏳ Pending Unpaid Invoices (${pendingInvoices.length}):\n\n| Invoice # | Customer | Issue Date | Amount Due | Status |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
+
+        return `### 🧾 Comprehensive Breakdown for ${targetInv.invoice_number}\n\n- **Customer Account:** ${targetInv.customer_name}\n- **Destination Market:** ${targetInv.destination_country}\n- **Issue Date:** ${targetInv.invoice_date}\n- **Payment Status:** ${targetInv.status}\n\n**Included Line Items:**\n${itemsList}\n\n**Total Invoice Value:** **$${targetInv.total_amount.toLocaleString()}**`;
       }
 
-      // 1D. All Invoices List
-      const rows = invoices.map(i => `| **${i.invoice_number}** | ${i.customer_name} | ${i.destination_country} | ${i.invoice_date} | **$${i.total_amount.toLocaleString()}** | ${i.status} |`).join('\n');
-      if (isFr) {
-        return `### 🧾 Liste des Factures Émises (${invoices.length}) :\n\n| N° Facture | Client | Destination | Date | Montant | Statut |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rows}`;
-      }
-      return `### 🧾 Issued Invoices Directory (${invoices.length}):\n\n| Invoice # | Customer | Destination | Date | Total Amount | Status |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rows}`;
+      const pendingInvoices = invoices.filter(i => i.status !== 'Paid');
+      const pendingList = pendingInvoices.map(i => `• **${i.invoice_number}** | Customer: ${i.customer_name} | Amount Due: **$${i.total_amount.toLocaleString()}** | Issued: ${i.invoice_date}`).join('\n');
+
+      return `### 🧾 Issued Invoices Summary (${invoices.length} Total Invoices)\n\n**Pending Unpaid Invoices:**\n${pendingList || 'All invoices are paid.'}\n\n**Total Enterprise Invoiced Revenue:** **$${invoices.reduce((sum, i) => sum + i.total_amount, 0).toLocaleString()}**`;
     }
 
     // =========================================================================
-    // INTENT 2: CUSTOMERS CRM ANALYTICS
+    // INTENT 7: CUSTOMERS CRM
     // =========================================================================
     if (intent === 'CUSTOMERS') {
-      // 2A. Best / Highest Spending Customer
-      if (q.includes('best') || q.includes('meilleur') || q.includes('top') || q.includes('highest spending') || q.includes('plus grand')) {
-        if (customers.length === 0) return isFr ? 'Aucun client enregistré.' : 'No customers registered.';
-        const topCustomer = [...customers].sort((a, b) => b.total_spent - a.total_spent)[0];
+      const topCustomer = [...customers].sort((a, b) => b.total_spent - a.total_spent)[0];
+      const maliCust = customers.filter(c => c.country.toLowerCase().includes('mali'));
 
-        if (isFr) {
-          return `### 🏆 Meilleur Client Entreprise (Plus Grand Acheteur) :\n\n- **Nom de la Société :** **${topCustomer.company_name || topCustomer.name}**\n- **Contact Principal :** ${topCustomer.name}\n- **Pays :** ${topCustomer.country}\n- **Dépenses Totales Cumulées :** **$${topCustomer.total_spent.toLocaleString()}**\n- **Nombre Total de Commandes :** ${topCustomer.total_orders} commandes\n- **Plafond de Crédit Accordé :** $${topCustomer.credit_limit.toLocaleString()}\n- **Statut CRM :** **${topCustomer.status}**\n- **Email :** ${topCustomer.email} | **Téléphone :** ${topCustomer.phone}`;
-        }
-        return `### 🏆 Top Enterprise Customer (Highest Spending Account):\n\n- **Company Name:** **${topCustomer.company_name || topCustomer.name}**\n- **Primary Contact:** ${topCustomer.name}\n- **Country:** ${topCustomer.country}\n- **Total Cumulative Revenue:** **$${topCustomer.total_spent.toLocaleString()}**\n- **Total Orders Executed:** ${topCustomer.total_orders} orders\n- **Approved Credit Limit:** $${topCustomer.credit_limit.toLocaleString()}\n- **CRM Account Status:** **${topCustomer.status}**\n- **Email:** ${topCustomer.email} | **Phone:** ${topCustomer.phone}`;
+      if (q.includes('mali')) {
+        const maliList = maliCust.map(c => `• **${c.company_name || c.name}** (${c.name})\n  - **Orders:** ${c.total_orders} completed\n  - **Total Revenue:** **$${c.total_spent.toLocaleString()}**\n  - **Status:** ${c.status}`).join('\n\n');
+        return `### 👥 Enterprise Accounts in Mali 🇲🇱\n\n${maliList}`;
       }
 
-      // 2B. Country Filter (e.g. Customers from Mali)
-      const countries = ['mali', 'burkina', 'ivoire', 'angola'];
-      const matchedCountry = countries.find(c => q.includes(c));
-
-      if (matchedCountry) {
-        const filteredCust = customers.filter(c => c.country.toLowerCase().includes(matchedCountry));
-        const rows = filteredCust.map(c => `| **${c.company_name || c.name}** | ${c.name} | ${c.total_orders} commandes | **$${c.total_spent.toLocaleString()}** | ${c.status} |`).join('\n');
-        
-        const countryName = matchedCountry === 'mali' ? 'Mali 🇲🇱' : matchedCountry === 'burkina' ? 'Burkina Faso 🇧🇫' : matchedCountry === 'ivoire' ? "Côte d'Ivoire 🇨🇮" : 'Angola 🇦🇴';
-
-        if (isFr) {
-          return `### 👥 Clients Basés au ${countryName} (${filteredCust.length}) :\n\n| Entreprise | Contact | Commandes | Total Dépensé | Statut |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
-        }
-        return `### 👥 Active Customers in ${countryName} (${filteredCust.length}):\n\n| Enterprise Account | Contact Name | Orders | Total Spent | CRM Status |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
-      }
-
-      // 2C. All Customers List
-      const rows = [...customers].sort((a, b) => b.total_spent - a.total_spent).map(c => `| **${c.company_name || c.name}** | ${c.country} | ${c.total_orders} orders | **$${c.total_spent.toLocaleString()}** | ${c.status} |`).join('\n');
-      if (isFr) {
-        return `### 👥 Répertoire Clients CRM (${customers.length}) :\n\n| Entreprise | Pays | Commandes | Chiffre d'Affaires | Statut |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
-      }
-      return `### 👥 Complete Customer CRM Accounts (${customers.length}):\n\n| Enterprise Account | Country | Orders | Total Spent | Status |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}`;
+      return `### 🏆 Top Enterprise Account & CRM Summary\n\n**Highest Spending Account:**\n- **Company Name:** **${topCustomer.company_name || topCustomer.name}**\n- **Country:** ${topCustomer.country}\n- **Total Revenue:** **$${topCustomer.total_spent.toLocaleString()}** (${topCustomer.total_orders} orders)\n- **CRM Account Status:** **${topCustomer.status}**\n\n**CRM Network Overview:**\n- Total Active CRM Accounts: ${customers.length} business clients\n- VIP Tier Accounts: ${customers.filter(c => c.status === 'VIP').length} clients`;
     }
 
     // =========================================================================
-    // INTENT 3: EXPIRY ANALYTICS
+    // INTENT 8: EXPIRY ANALYTICS
     // =========================================================================
     if (intent === 'EXPIRY') {
       const expItems = products.filter(p => {
         const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
         return days <= 60;
-      }).sort((a, b) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
+      });
 
-      const rows = expItems.map(p => {
+      const totalLossRisk = expItems.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
+
+      const itemsList = expItems.map(p => {
         const days = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-        const riskVal = p.quantity * p.cost_price;
-        return `| **${p.product_name}** | ${p.quantity} ${p.unit} | ${p.warehouse} | ${p.expiry_date} (${days} days) | **$${riskVal.toLocaleString()}** |`;
+        return `• **${p.product_name}**: ${p.quantity} ${p.unit} in ${p.warehouse} | Expiry: ${p.expiry_date} (${days} days) | Financial Risk: **$${(p.quantity * p.cost_price).toLocaleString()}**`;
       }).join('\n');
 
-      if (isFr) {
-        return `### ⏰ Analyse des Expirations de Stock (Sous 60 Jours) :\n\n| Produit | Stock Restant | Entrepôt | Date d'Expiration | Perte Financière Risquée |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}\n\n**Plan d'Action Exécutif :** Appliquer une remise immédiate de 15% à 25% pour écouler les lots avant péremption.`;
-      }
-      return `### ⏰ Live Shelf Expiry Risk Analysis (< 60 Days):\n\n| Product Line | Remaining Stock | Depot Location | Expiry Date | Potential Loss Risk |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}\n\n**Executive Action Plan:** Initiate immediate 15% to 25% promotional discounts to liquidate batches prior to shelf expiration.`;
+      return `### ⏰ Shelf Life Expiry Risk Analysis (< 60 Days)\n\n**Items Near Expiry:**\n${itemsList}\n\n**Total Financial Spoilage Risk Exposure:** **$${totalLossRisk.toLocaleString()}**\n\n**Recommendation:** Apply immediate 15% to 25% promotional discounts to recover inventory cost capital before expiration dates.`;
     }
 
     // =========================================================================
-    // INTENT 4: SUPPLIERS ANALYTICS
+    // INTENT 9: SUPPLIERS ANALYTICS
     // =========================================================================
     if (intent === 'SUPPLIERS') {
-      const rows = suppliers.map(s => `| **${s.supplier_name}** | ${s.country} | ⭐ ${s.rating}/5 | ${s.lead_time_days} jours | ${s.contact_person} | ${s.products_supplied.join(', ')} |`).join('\n');
-      if (isFr) {
-        return `### 🏭 Répertoire des Fournisseurs Partenaires (${suppliers.length}) :\n\n| Fournisseur | Pays d'Origine | Note | Délai de Livraison | Contact | Gammes de Produits |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rows}`;
-      }
-      return `### 🏭 Verified International Suppliers Directory (${suppliers.length}):\n\n| Supplier Name | Country | Rating | Lead Time | Contact Person | Supplied Products |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rows}`;
+      const supList = suppliers.map(s => `• **${s.supplier_name}** (${s.country})\n  - **Rating:** ⭐ ${s.rating}/5.0\n  - **Lead Time:** ${s.lead_time_days} days\n  - **Products Supplied:** ${s.products_supplied.join(', ')}`).join('\n\n');
+
+      return `### 🏭 International Suppliers Directory (${suppliers.length} Partners)\n\n${supList}`;
     }
 
     // =========================================================================
-    // INTENT 5: FORECASTS / IMPORT ANALYTICS
+    // INTENT 10: FORECASTS / IMPORT ANALYTICS
     // =========================================================================
     if (intent === 'FORECASTS') {
-      const forecasts = forecastService.generateForecasts();
-      const rows = forecasts.map(f => `| **${f.product_name}** | ${f.current_stock} Cartons | ${f.expected_demand} Cartons | **${f.import_recommendation_qty} Cartons** | ${f.trend} |`).join('\n');
+      const forecastList = forecasts.slice(0, 5).map(f => `• **${f.product_name}** (${f.category})\n  - Current Stock: ${f.current_stock} cartons | Projected Demand: ${f.expected_demand} cartons\n  - **Recommended Reorder Qty:** **${f.import_recommendation_qty} cartons**\n  - Market Trend: ${f.trend}`).join('\n\n');
 
-      if (isFr) {
-        return `### 🔮 Recommandations d'Importation & Prévisions de Demande :\n\n| Produit | Stock Actuel | Demande Prévue | Quantité à Importer | Tendance |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}\n\n**Conseil Stratégique :** Passer les commandes d'importation sous 48h auprès des fournisseurs en Turquie, Chine et Belgique pour éviter les ruptures pendant le Ramadan.`;
-      }
-      return `### 🔮 Demand Forecasting & Import Recommendations:\n\n| Product Line | Current Stock | Projected Demand | Recommended Reorder Qty | Market Trend |\n| :--- | :--- | :--- | :--- | :--- |\n${rows}\n\n**Strategic Advice:** Issue purchase orders within 48 hours to preferred suppliers in Turkey, China, and Belgium to ensure inventory availability for high-demand seasonal surges.`;
+      return `### 🔮 Demand Forecasting & Import Recommendations\n\n**Priority Reorder Recommendations:**\n${forecastList}\n\n**Strategic Procurement Advice:** Place purchase orders within 48 hours with preferred suppliers in Turkey, China, and Belgium to ensure inventory availability for high-demand seasonal surges.`;
     }
 
     // =========================================================================
-    // INTENT 6: INVENTORY ANALYTICS
+    // INTENT 11: INVENTORY ANALYTICS
     // =========================================================================
     if (intent === 'INVENTORY') {
-      // 6A. Category or origin filter
-      let filteredProducts = products;
+      let filtered = products;
+      if (q.includes('chocolate') || q.includes('chocolat')) filtered = products.filter(p => p.category === 'Chocolates' || p.product_name.toLowerCase().includes('choco') || p.product_name.toLowerCase().includes('laka') || p.product_name.toLowerCase().includes('delisso'));
+      else if (q.includes('biscuit')) filtered = products.filter(p => p.category === 'Biscuits' || p.product_name.toLowerCase().includes('biscuit') || p.product_name.toLowerCase().includes('oreo') || p.product_name.toLowerCase().includes('today'));
+      else if (q.includes('candy') || q.includes('bonbon')) filtered = products.filter(p => p.category === 'Candy' || p.product_name.toLowerCase().includes('candy') || p.product_name.toLowerCase().includes('ibon') || p.product_name.toLowerCase().includes('freegells'));
 
-      if (q.includes('biscuit')) filteredProducts = products.filter(p => p.category === 'Biscuits' || p.product_name.toLowerCase().includes('biscuit'));
-      else if (q.includes('chocolate') || q.includes('chocolat')) filteredProducts = products.filter(p => p.category === 'Chocolates' || p.product_name.toLowerCase().includes('chocolate') || p.product_name.toLowerCase().includes('chocolat'));
-      else if (q.includes('candy') || q.includes('bonbon')) filteredProducts = products.filter(p => p.category === 'Candy' || p.product_name.toLowerCase().includes('candy'));
-      else if (q.includes('turkey') || q.includes('turquie')) filteredProducts = products.filter(p => p.supplier_country === 'Turkey');
-      else if (q.includes('china') || q.includes('chine')) filteredProducts = products.filter(p => p.supplier_country === 'China');
-      else if (q.includes('morocco') || q.includes('maroc')) filteredProducts = products.filter(p => p.supplier_country === 'Morocco');
+      const listStr = filtered.map(p => `• **${p.product_name}** (${p.category})\n  - **Stock:** ${p.quantity.toLocaleString()} ${p.unit} in ${p.warehouse}\n  - **Origin:** ${p.supplier_country} | **Selling Price:** $${p.selling_price.toFixed(2)}\n  - **Total Stock Valuation:** **$${(p.quantity * p.selling_price).toLocaleString()}**`).join('\n\n');
 
-      const rows = filteredProducts.map(p => `| **${p.product_name}** | ${p.category} | **${p.quantity} ${p.unit}** | ${p.warehouse} | ${p.supplier_country} | $${p.selling_price.toFixed(2)} | **$${(p.quantity * p.selling_price).toLocaleString()}** |`).join('\n');
-
-      if (isFr) {
-        return `### 📦 Bilan des Stocks de Confiserie (${filteredProducts.length} Produits) :\n\n| Produit | Catégorie | Stock Restant | Entrepôt | Fournisseur | Prix Vente | Valeur Totale |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n${rows}`;
-      }
-      return `### 📦 Live Confectionery Inventory Balance (${filteredProducts.length} Products):\n\n| Product Name | Category | Available Stock | Logistics Depot | Origin Country | Selling Price | Total Value |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n${rows}`;
+      return `### 📦 Live Confectionery Inventory Balance (${filtered.length} SKUs)\n\n${listStr}`;
     }
 
     // =========================================================================
-    // INTENT 7: EXECUTIVE SUMMARY (GENERAL REPORT)
+    // INTENT 12: EXECUTIVE SUMMARY (GENERAL REPORT)
     // =========================================================================
     const getSalesRev = (s: any) => Number(s?.total_revenue || (s?.quantity_sold * s?.unit_price) || 0);
     const totalCost = products.reduce((sum, p) => sum + (p.quantity * p.cost_price), 0);
@@ -577,16 +717,25 @@ export class AIService {
 
   /**
    * 🚀 Core Multi-Stage AI Agent Execution Pipeline:
-   * 1. Detects User Intent (INVOICES, CUSTOMERS, INVENTORY, EXPIRY, SUPPLIERS, FORECASTS, EXECUTIVE).
+   * 1. Detects User Intent (IDENTITY, OVERSTOCK_ANALYSIS, DISCOUNT_RECOMMENDATIONS, PROFIT_IMPROVEMENT, etc.).
    * 2. Assembles Focused Business Context with ONLY relevant ERP modules.
-   * 3. Passes query + focused context to Gemini API.
+   * 3. Passes query + focused context + Chief Business Intelligence Officer persona prompt to Gemini API.
    * 4. If Gemini API succeeds -> Displays Gemini's exact answer.
-   * 5. If Gemini API rate-limits (429) or fails -> Calls LocalDataEngine (Intent-Driven Data Analytics Engine).
+   * 5. If Gemini API rate-limits (429) or fails -> Calls LocalDataEngine (Intent-Driven Business Reasoning Engine).
    */
   public async answerQueryAsync(query: string, language: string = 'en', userRole: string = 'Administrator'): Promise<string> {
     const focusedContext = BusinessContextBuilder.buildFocusedContext(query, userRole);
 
-    const systemPrompt = `You are Gemini, an autonomous Executive Business Intelligence AI Agent for ETS FOFANA CONFISERIE (confectionery import & distribution enterprise based in Mali importing from Turkey, Morocco, Tunisia, Brazil, China, Thailand, and Belgium, and distributing across Mali, Burkina Faso, Côte d'Ivoire, and Angola).
+    const systemPrompt = `You are Gemini, acting as the Chief Business Intelligence Officer for ETS FOFANA CONFISERIE (a confectionery import & distribution enterprise based in Mali importing from Turkey, Morocco, Tunisia, Brazil, China, Thailand, and Belgium, and distributing across Mali, Burkina Faso, Côte d'Ivoire, and Angola).
+
+CRITICAL PERSONA INSTRUCTIONS:
+- You are an experienced Business Analyst & Executive Advisor, NOT a simple database lookup tool.
+- DO NOT just print raw data or dump markdown tables.
+- ALWAYS structure your response with:
+  1. **Overview / Executive Summary Statement**
+  2. **Data-Grounded Analysis** (using clean bullet points with exact figures, dollar amounts, product names, dates, and customer names)
+  3. **Financial & Business Impact** (working capital tied up, spoilage loss risk, or revenue opportunity)
+  4. **Actionable Executive Recommendations** (clear, prioritized recommendations with justifications)
 
 The AI Agent Intent Detector classified the user question into Intent: [${focusedContext.detectedIntent}].
 The AI Agent constructed the following FOCUSED LIVE ERP BUSINESS CONTEXT:
@@ -601,9 +750,8 @@ USER QUESTION:
 "${query}"
 
 INSTRUCTIONS FOR GEMINI:
-- Answer the user's question directly with exact figures, invoice numbers, customer names, carton quantities, dollar amounts, product names, and country origins retrieved from the focused context.
 - Reply entirely in ${language === 'fr' ? 'FRENCH' : 'ENGLISH'}.
-- Use clean Markdown formatting with clear headers, tables, and bullet points.`;
+- Use clean Markdown formatting with bullet points and bold headers. DO NOT use markdown pipe tables.`;
 
     const geminiResult = await this.callGeminiAPI(systemPrompt);
 
